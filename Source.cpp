@@ -31,6 +31,10 @@ public:
         int vertexIndex, normalIndex, textureIndex;
     };
 
+    struct Position {
+        float x = 0.0, y = 0.0, z = 0.0;
+    }position;
+
     vector<Vertex> vertices;
     vector<Normal> normals;
     vector<TextureCoord> textureCoords;
@@ -147,15 +151,15 @@ public:
         return count;
     }
 }player_body, player2, basketball_panel, maleBody;
-
+struct Camera {
+    GLfloat position[3] = { 0.0f, 7.5f, 1.0f };
+    GLfloat lookat[3] = { 0.0f, 0.0f, 0.0f };
+    GLfloat up[3] = { 0.0f, 1.0f, 0.0f };
+    GLfloat distance = 25.0;
+    GLfloat angleX = 0.0f;
+    GLfloat angleY = 100.0f;
+}camera;
 static int rotSpeed = 20;
-GLfloat cameraPosition[] = { 0.0f, 7.5f, 1.0f };
-GLfloat cameraDistance = 25.0;
-GLfloat cameraAngleX = 0.0f;
-GLfloat cameraAngleY = 100.0f;
-GLfloat z_movement = -4.0;
-GLfloat x_movement = 0.0;
-GLfloat y_mov = 4.557;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 int last_x, last_y;
@@ -195,38 +199,6 @@ static void drawShape(Model model) {
     firstCall = false;
     glEnd();
 }
-//static void drawShape(Model model) {
-//    glBegin(GL_TRIANGLES);
-//    static bool firstCall = true;
-//    int i = 1;
-//    for (const auto& faceVertices : model.faces) {
-//        for (const auto& faceVertex : faceVertices) {
-//            if(faceVertex.normalIndex != -1)
-//                glNormal3f(model.normals[faceVertex.normalIndex].x, model.normals[faceVertex.normalIndex].y, model.normals[faceVertex.normalIndex].z);
-//            if(faceVertex.textureIndex != -1)
-//                glTexCoord2f(model.textureCoords[faceVertex.textureIndex].u, model.textureCoords[faceVertex.textureIndex].v);
-//            glVertex3f(model.vertices[faceVertex.vertexIndex].x, model.vertices[faceVertex.vertexIndex].y, model.vertices[faceVertex.vertexIndex].z);
-//        }
-//         //Add two degenerate triangles to connect the strips
-//        glNormal3f(model.normals[faceVertices.back().normalIndex].x, model.normals[faceVertices.back().normalIndex].y, model.normals[faceVertices.back().normalIndex].z);
-//        glTexCoord2f(model.textureCoords[faceVertices.back().textureIndex].u, model.textureCoords[faceVertices.back().textureIndex].v);
-//        glVertex3f(model.vertices[faceVertices.back().vertexIndex].x, model.vertices[faceVertices.back().vertexIndex].y, model.vertices[faceVertices.back().vertexIndex].z);
-//
-//        glNormal3f(model.normals[faceVertices.back().normalIndex].x, model.normals[faceVertices.back().normalIndex].y, model.normals[faceVertices.back().normalIndex].z);
-//        glTexCoord2f(model.textureCoords[faceVertices.back().textureIndex].u, model.textureCoords[faceVertices.back().textureIndex].v);
-//        glVertex3f(model.vertices[faceVertices.back().vertexIndex].x, model.vertices[faceVertices.back().vertexIndex].y, model.vertices[faceVertices.back().vertexIndex].z);
-//
-//        glNormal3f(model.normals[faceVertices.front().normalIndex].x, model.normals[faceVertices.front().normalIndex].y, model.normals[faceVertices.front().normalIndex].z);
-//        glTexCoord2f(model.textureCoords[faceVertices.front().textureIndex].u, model.textureCoords[faceVertices.front().textureIndex].v);
-//        glVertex3f(model.vertices[faceVertices.front().vertexIndex].x, model.vertices[faceVertices.front().vertexIndex].y, model.vertices[faceVertices.front().vertexIndex].z);
-//        if (firstCall) {
-//            cout << "progress drawing " << (i++ * 100 / model.faces.size()) << "%" << "\r";
-//        }
-//    }
-//
-//    firstCall = false;
-//    glEnd();
-//}
 static void display(void)
 {
     const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
@@ -234,11 +206,10 @@ static void display(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
-    cameraPosition[0] = cameraDistance * sin(cameraAngleY);
-    cameraPosition[2] = cameraDistance * cos(cameraAngleY);
-    GLfloat up[3] = { 0.0f, 1.0f, 0.0f };
-    if (cameraAngleX < 0.0f) {
-        up[1] = -1.0f;
+    camera.position[0] = camera.distance * sin(camera.angleY);
+    camera.position[2] = camera.distance * cos(camera.angleY);
+    if (camera.angleX < 0.0f) {
+        camera.up[1] = -1.0f;
     }
 
     // Reset the modelview matrix
@@ -246,8 +217,8 @@ static void display(void)
     glLoadIdentity();
 
     // Apply the camera transformation to the modelview matrix
-    gluLookAt(cameraPosition[0], cameraPosition[1], cameraPosition[2],
-        0.0, 7.0, -4.0, up[0], up[1], up[2]);
+    gluLookAt(camera.position[0], camera.position[1], camera.position[2],
+        camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
 
     glTranslatef(0.0, 0.0, 0.0);
     glPushMatrix();
@@ -262,27 +233,19 @@ static void display(void)
     glPopMatrix();
 
     glPushMatrix();
-    glTranslated(x_movement, y_mov, z_movement);
+    glTranslated(player_body.position.x, player_body.position.y + 4.557, player_body.position.z);
     glColor3f(1.0, 0.0, 0.0);
     glRotated(a, 0, 1, 0);
     drawShape(player_body);
     glPopMatrix();
 
     glPushMatrix();
-    glTranslated(x_movement + 10, 0.0, z_movement);
+    glTranslated(player_body.position.x + 10, 0.0, player_body.position.z);
     glColor3f(1.0, 0.0, 0.0);
     glRotated(a, 0, 1, 0);
     drawShape(basketball_panel);
     glPopMatrix();
 
-    //glPushMatrix();
-    //glTranslated(x_movement + 15, 0.0, z_movement + 5);
-    //glColor3f(1.0, 0.0, 0.0);
-    //glRotated(-a, 0, 1, 0);
-
-    //
-    ////drawShape(player2);
-    //glPopMatrix();
     glutSwapBuffers();
 
     GLenum error = glGetError();
@@ -301,8 +264,8 @@ void motion(int x, int y) {
     float dx = (float)(x - last_x) / (float)800;
     float dy = (float)(y - last_y) / (float)600;
 
-    cameraAngleY -= dx * 2.0f * M_PI;
-    cameraPosition[1] += dy * 10.0f;
+    camera.angleY -= dx * 2.0f * M_PI;
+    camera.position[1] += dy * 10.0f;
 
     last_x = x;
     last_y = y;
@@ -320,12 +283,12 @@ static void key(unsigned char key, int x, int y)
         exit(0);
         break;
     case 'u':
-        y_mov += 0.01;
-        cout << "y : " << y_mov << endl;
+        player_body.position.y += 0.01;
+        cout << "y : " << player_body.position.y << endl;
         break;
     case 'i':
-        y_mov -= 0.01;
-        cout << "y : " << y_mov << endl;
+        player_body.position.y -= 0.01;
+        cout << "y : " << player_body.position.y << endl;
         break;
     case 'p':
         switch (rotSpeedStates)
@@ -350,7 +313,7 @@ static void key(unsigned char key, int x, int y)
         rotSpeedStates = ++rotSpeedStates % 5;
         break;
     }
-    
+
 
     glutPostRedisplay();
 }
@@ -362,22 +325,22 @@ static void idle(void)
 {
     // Check the state of each key and take appropriate action
     if (keys['w']) {
-        z_movement -= 0.05;
+        player_body.position.z -= 0.05;
     }
     if (keys['s']) {
-        z_movement += 0.05;
+        player_body.position.z += 0.05;
     }
     if (keys['a']) {
-        x_movement -= 0.05;
+        player_body.position.x -= 0.05;
     }
     if (keys['d']) {
-        x_movement += 0.05;
+        player_body.position.x += 0.05;
     }
     if (keys['m']) {
-        cameraAngleY += 0.01;
+        camera.angleY += 0.01;
     }
     if (keys['n']) {
-        cameraAngleY -= 0.01;
+        camera.angleY -= 0.01;
     }
     glutPostRedisplay();
 }
