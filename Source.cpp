@@ -2,6 +2,7 @@
 #define CAMERA_STATE_FIXED_1 0
 #define CAMERA_STATE_FIXED_2 1
 #define CAMERA_STATE_FOLLOW 2
+#define GRAVITY 10
 #include <iostream>
 #include <windows.h>
 #include <cmath>
@@ -138,7 +139,6 @@ public:
 
         while (file.read(buffer, sizeof(buffer))) {
             count += std::count(buffer, buffer + file.gcount(), '\n');
-            //count += count(buffer, buffer + file.gcount(), '\n');
         }
 
         if (file.eof()) {
@@ -165,7 +165,8 @@ struct Camera {
     GLfloat angleX = 0.0f;
     GLfloat angleY = 0.0f;
 }camera;
-int rotSpeed = 20;
+float vertical_velocity = 0.0f;
+float prev_time = 0.0f;
 unsigned int camera_state = 0;
 float player_move_speed = 0.15;
 bool keys[256] = { false }; // Array to store the state of each key
@@ -302,27 +303,35 @@ static void setCamera(int camera_state) {
         camera.position[0] = player_body.position.x + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
         camera.position[1] = player_body.position.y + camera.offset[0] * sin(camera.angleX * M_PI / 180.0f) + camera.offset[1];
         camera.position[2] = player_body.position.z + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
+        //// Update the camera position and orientation based on user input
+        //float camera_angle_x_rad = camera.angleX * M_PI / 180.0f;
+        //float camera_angle_y_rad = camera.angleY * M_PI / 180.0f;
+        //camera.position[0] += camera.centerX + camera.offset[0] * sin(camera_angle_x_rad) * sin(camera_angle_y_rad);
+        //camera.position[1] += camera.centerY + camera.offset[0] * cos(camera_angle_x_rad);
+        //camera.position[2] += camera.centerX + camera.offset[0] * sin(camera_angle_x_rad) * cos(camera_angle_y_rad);
     }
 }
 static void display()
 {
-    const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-    const double a = t * rotSpeed;
+    const double current_time = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
+    // Calculate the time delta since the last frame
+    float dt = current_time - prev_time;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
     setCamera(camera_state);
-
+    
     // Reset the modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+
     // Apply the camera transformation to the modelview matrix
     gluLookAt(camera.position[0], camera.position[1], camera.position[2],
         camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
 
-    glTranslatef(0.0, 0.0, 0.0);
-    glPushMatrix();
     // draw the basketball court
+    glPushMatrix();
+    glTranslatef(0.0, 0.0, 0.0);
     glBegin(GL_QUADS);
     glColor3f(0.0, 0.6, 0.0); // set the color to green
     glVertex3f(-40.0, 0.0, -65.0);
@@ -333,6 +342,14 @@ static void display()
     glPopMatrix();
 
     glPushMatrix();
+    vertical_velocity -= GRAVITY * dt;
+    player_body.position.y += vertical_velocity * dt;
+    // Clamp the object's vertical position to the ground level
+    if (player_body.position.y < 1)
+    {
+        player_body.position.y = 1;
+        vertical_velocity = 0.0f;
+    }
     glTranslated(player_body.position.x, player_body.position.y + 4.557, player_body.position.z);
     glColor3f(1.0, 0.0, 0.0);
     glRotatef(player_body.rotation.x, 1.0f, 0.0f, 0.0f);
@@ -361,6 +378,7 @@ static void display()
     glPopMatrix();
 
     glutSwapBuffers();
+    prev_time = current_time;
 }
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -369,11 +387,6 @@ void mouse(int button, int state, int x, int y) {
     }
 }
 void motion(int x, int y) {
-    float dx = (float)(x - last_x) / (float)800;
-    float dy = (float)(y - last_y) / (float)600;
-
-    camera.angleY -= dx * 2.0f * M_PI;
-    camera.position[1] += dy * 10.0f;
 
     last_x = x;
     last_y = y;
@@ -383,7 +396,6 @@ void motion(int x, int y) {
 static void key(unsigned char key, int x, int y)
 {
     keys[key] = true; // Set the state of the pressed key to true
-    static int rotSpeedStates = 1;
     switch (key)
     {
     case 27:
@@ -397,28 +409,6 @@ static void key(unsigned char key, int x, int y)
     case 'i':
         basketball_panel2.rotation.y -= 0.1;
         cout << "y : " << basketball_panel2.rotation.y << endl;
-        break;
-    case 'p':
-        switch (rotSpeedStates)
-        {
-        case 0:
-            rotSpeed = 20;
-            break;
-        case 1:
-            rotSpeed = 70;
-            break;
-        case 2:
-            rotSpeed = 120;
-            break;
-        case 3:
-            rotSpeed = 170;
-            break;
-        case 4:
-            rotSpeed = 220;
-        default:
-            break;
-        }
-        rotSpeedStates = ++rotSpeedStates % 5;
         break;
     case 'C':
     case 'c':
@@ -436,18 +426,6 @@ static void special(int key, int x, int y)
 {
     switch (key)
     {
-    case GLUT_KEY_UP:
-        //basketball_panel1.position.x += 1.0;
-        cout << "x " << ++basketball_panel1.position.x << endl;
-        break;
-    case GLUT_KEY_DOWN:
-        cout << "x " << --basketball_panel1.position.x << endl;
-        break;
-    case GLUT_KEY_RIGHT:
-        cout << "z " << ++basketball_panel1.position.z << endl;
-        break;
-    case GLUT_KEY_LEFT:
-        cout << "z " << --basketball_panel1.position.z << endl;
         break;
     }
 }
@@ -476,6 +454,9 @@ static void idle()
     }
     if (keys['d']) {
         player_body.rotation.y -= player_move_speed + 0.65;
+    }
+    if (keys[' ']) {
+        vertical_velocity = 5.0f;
     }
 
     glutPostRedisplay();
