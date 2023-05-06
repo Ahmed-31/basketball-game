@@ -10,7 +10,6 @@
 #include <sstream>
 #include <regex>
 #include <vector>
-//#include <cstdlib>
 #include <GL/glut.h>
 
 using namespace std;
