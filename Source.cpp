@@ -3,7 +3,7 @@
 #define CAMERA_STATE_FIXED_2 1
 #define CAMERA_STATE_FOLLOW 2
 #define CAMERA_STATE_FREE 3
-#define MOUSE_SENSITIVITY 0.5
+#define MOUSE_SENSITIVITY 0.3
 #define GRAVITY 10
 #include <iostream>
 #include <windows.h>
@@ -294,17 +294,14 @@ static void setCamera(int camera_state) {
         camera.lookat[2] = 0.0f;
     }
     else if (camera_state == CAMERA_STATE_FOLLOW) {
-        camera.angleY = player_body.rotation.y;
-        camera.angleX = player_body.rotation.x;
-
         // Calculate camera position and target based on player position and orientation
         camera.lookat[0] = player_body.position.x;
         camera.lookat[1] = player_body.position.y + camera.offset[1];
         camera.lookat[2] = player_body.position.z;
 
-        camera.position[0] = player_body.position.x + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
-        camera.position[1] = player_body.position.y + camera.offset[0] * sin(camera.angleX * M_PI / 180.0f) + camera.offset[1];
-        camera.position[2] = player_body.position.z + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
+        camera.position[0] = player_body.position.x + camera.offset[0] * sin(player_body.rotation.y * M_PI / 180.0f);
+        camera.position[1] = player_body.position.y + camera.offset[0] * sin(player_body.rotation.x * M_PI / 180.0f) + camera.offset[1];
+        camera.position[2] = player_body.position.z + camera.offset[0] * cos(player_body.rotation.y * M_PI / 180.0f);
     }
     else if (camera_state == CAMERA_STATE_FREE) {
         // Update the camera position and orientation based on user input
@@ -312,7 +309,7 @@ static void setCamera(int camera_state) {
         float camera_angle_y_rad = camera.angleY * M_PI / 180.0f;
         camera.position[0] = camera.lookat[0] + camera.offset[0] * sin(camera_angle_x_rad) * sin(camera_angle_y_rad);
         camera.position[1] = camera.lookat[1] + camera.offset[0] * cos(camera_angle_x_rad);
-        camera.position[2] = camera.lookat[0] + camera.offset[0] * sin(camera_angle_x_rad) * cos(camera_angle_y_rad);
+        camera.position[2] = camera.lookat[2] + camera.offset[0] * sin(camera_angle_x_rad) * cos(camera_angle_y_rad);
 
     }
 }
@@ -393,8 +390,11 @@ void mouse(int button, int state, int x, int y) {
 }
 void motion(int x, int y) {
 
-    camera.angleX = y - last_y * MOUSE_SENSITIVITY;
-    camera.angleY = x - last_x * MOUSE_SENSITIVITY;
+    int dx = x - last_x;
+    int dy = y - last_y;
+
+    camera.angleX -= dy * MOUSE_SENSITIVITY;
+    camera.angleY -= dx * MOUSE_SENSITIVITY;
 
     last_x = x;
     last_y = y;
@@ -410,17 +410,14 @@ static void key(unsigned char key, int x, int y)
     case 'q':
         exit(0);
         break;
-    case 'u':
-        basketball_panel2.rotation.y += 0.1;
-        cout << "y : " << basketball_panel2.rotation.y << endl;
-        break;
-    case 'i':
-        basketball_panel2.rotation.y -= 0.1;
-        cout << "y : " << basketball_panel2.rotation.y << endl;
-        break;
     case 'C':
     case 'c':
         camera_state = ++camera_state % 4;
+        camera.lookat[0] = 0.0;
+        camera.lookat[1] = 20.0;
+        camera.lookat[2] = 20.0;
+        camera.angleX = 100.0;
+        camera.angleY = 50.0;
         break;
     }
 
@@ -465,6 +462,30 @@ static void idle()
     }
     if (keys[' ']) {
         vertical_velocity = 5.0f;
+    }
+    if (keys['i']) {
+        camera.position[1] += 0.5;
+        camera.lookat[1] += 0.5;
+    }
+    if (keys['k']) {
+        camera.position[1] -= 0.5;
+        camera.lookat[1] -= 0.5;
+    }
+    if (keys['l']) {
+        camera.position[0] += 0.5;
+        camera.lookat[0] += 0.5;
+    }
+    if (keys['j']) {
+        camera.position[0] -= 0.5;
+        camera.lookat[0] -= 0.5;
+    }
+    if (keys['o']) {
+        camera.position[2] += 0.5;
+        camera.lookat[2] += 0.5;
+    }
+    if (keys['u']) {
+        camera.position[2] -= 0.5;
+        camera.lookat[2] -= 0.5;
     }
 
     glutPostRedisplay();
