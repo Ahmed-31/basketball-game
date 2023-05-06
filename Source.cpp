@@ -35,11 +35,11 @@ public:
     };
 
     struct Position {
-        float x = 0.0, y = 0.0, z = 0.0;
+        float x = 1.0, y = 1.0, z = 1.0;
     }position;
 
     struct Rotation {
-        float x = 0.0, y = 0.0, z = 0.0;
+        float x = 1.0, y = 1.0, z = 1.0;
     }rotation;
 
     vector<Vertex> vertices;
@@ -159,18 +159,88 @@ public:
     }
 }player_body, player2, basketball_panel, maleBody;
 struct Camera {
-    GLfloat position[3] = { 0.0f, 7.5f, 1.0f };
+    GLfloat position[3] = { 0.0f, 5.5f, 1.0f };
     GLfloat lookat[3] = { 0.0f, 0.0f, 0.0f };
     GLfloat up[3] = { 0.0f, 1.0f, 0.0f };
-    GLfloat offset[3] = { 0.0f, -80.0f, 12.0 };
-    //GLfloat distance = 15.0;
+    GLfloat offset[2] = { -15.0f, 8.0f };
     GLfloat angleX = 0.0f;
-    GLfloat angleY = 100.0f;
+    GLfloat angleY = 0.0f;
 }camera;
-static int rotSpeed = 20;
+int rotSpeed = 20;
+unsigned int camera_state = 0;
+float player_move_speed = 0.05;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 int last_x, last_y;
+
+
+const GLfloat light_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+const GLfloat light_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
+const GLfloat mat_ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const GLfloat high_shininess[] = { 100.0f };
+
+static void resize(int, int);
+static void drawShape(Model);
+static void setCamera(int);
+static void display();
+void mouse(int, int, int, int);
+void motion(int, int);
+static void key(unsigned char, int, int);
+static void keyUp(unsigned char, int , int);
+static void special(int, int, int);
+static void specialUp(int, int, int);
+static void idle();
+/* Program entry point */
+int main(int argc, char* argv[])
+{
+    glutInit(&argc, argv);
+    glutInitWindowSize(800, 600);
+    glutInitWindowPosition(100, 100);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+    glutCreateWindow("BasketBall Game");
+    player_body.loadObjFile("Models/low_poly_body.obj");
+    basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
+    //maleBody.loadObjFile("Models/male_body.obj");
+    //loadObjFile("Models/box.obj");
+    //player2.loadObjFile("Models/male_body.obj");
+    //player2.loadObjFile("Models/Orange.obj");
+    glutReshapeFunc(resize);
+    glutDisplayFunc(display);
+
+    glutMouseFunc(mouse); // set the mouse function
+    glutMotionFunc(motion); // set the motion function
+    glutKeyboardFunc(key);
+    glutKeyboardUpFunc(keyUp);
+    //glutSpecialFunc(special);
+    //glutSpecialUpFunc(specialUp);
+    glutIdleFunc(idle);
+
+    glClearColor(1, 1, 1, 1);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_LIGHTING);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        cerr << "OpenGL error: " << error << endl;
+    }
+    glutMainLoop();
+    return 0;
+}
 
 /* GLUT callback Handlers */
 static void resize(int width, int height)
@@ -179,7 +249,7 @@ static void resize(int width, int height)
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60, ar, 2.0f, 100.0f);
+    gluPerspective(60, ar, 2.0f, 1000.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
@@ -189,13 +259,13 @@ static void drawShape(Model model) {
     int i = 1;
     for (const auto& faceVertices : model.faces) {
         for (const auto& faceVertex : faceVertices) {
-            if (faceVertex.normalIndex != -1 && faceVertex.normalIndex < model.normals.size()) {
+            if (faceVertex.normalIndex != -1 && (unsigned)faceVertex.normalIndex < model.normals.size()) {
                 glNormal3f(model.normals[faceVertex.normalIndex].x, model.normals[faceVertex.normalIndex].y, model.normals[faceVertex.normalIndex].z);
             }
-            if (faceVertex.textureIndex != -1 && faceVertex.textureIndex < model.textureCoords.size()) {
+            if (faceVertex.textureIndex != -1 && (unsigned)faceVertex.textureIndex < model.textureCoords.size()) {
                 glTexCoord2f(model.textureCoords[faceVertex.textureIndex].u, model.textureCoords[faceVertex.textureIndex].v);
             }
-            if (faceVertex.vertexIndex < model.vertices.size()) {
+            if ((unsigned)faceVertex.vertexIndex < model.vertices.size()) {
                 glVertex3f(model.vertices[faceVertex.vertexIndex].x, model.vertices[faceVertex.vertexIndex].y, model.vertices[faceVertex.vertexIndex].z);
             }
         }
@@ -209,57 +279,47 @@ static void drawShape(Model model) {
 }
 static void setCamera(int camera_state) {
     if (camera_state == CAMERA_STATE_FIXED_1) {
-        camera.position[0] = 10.0f;
-        camera.position[1] = 10.0f;
-        camera.position[2] = -10.0f;
+        camera.position[0] = 0.0f;
+        camera.position[1] = 30.0f;
+        camera.position[2] = -100.0f;
         camera.lookat[0] = 0.0f;
         camera.lookat[1] = 0.0f;
         camera.lookat[2] = 0.0f;
     }
     else if (camera_state == CAMERA_STATE_FIXED_2) {
-        camera.position[0] = -10.0f;
-        camera.position[1] = 10.0f;
-        camera.position[2] = 10.0f;
+        camera.position[0] = 100.0f;
+        camera.position[1] = 50.0f;
+        camera.position[2] = 0.0f;
         camera.lookat[0] = 0.0f;
         camera.lookat[1] = 0.0f;
         camera.lookat[2] = 0.0f;
     }
     else if (camera_state == CAMERA_STATE_FOLLOW) {
         camera.angleY = player_body.rotation.y;
+        camera.angleX = player_body.rotation.x;
+
         // Calculate camera position and target based on player position and orientation
         camera.lookat[0] = player_body.position.x;
-        camera.lookat[1] = player_body.position.y;
+        camera.lookat[1] = player_body.position.y + camera.offset[1];
         camera.lookat[2] = player_body.position.z;
 
-        // Calculate camera position based on player position and orientation
-        float camera_x = player_body.position.x + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
-        float camera_z = player_body.position.z + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
-
-        camera.position[0] = camera_x - camera.offset[2] * sin(camera.angleY * M_PI / 180.0f);
-        camera.position[1] = player_body.position.y + camera.offset[1] * sin(player_body.rotation.x * M_PI / 180.0f);
-        camera.position[2] = camera_z - camera.offset[2] * cos(camera.angleY * M_PI / 180.0f);
-
-        // Set up camera orientation
-        camera.up[0] = 0.0f;
-        camera.up[1] = cos(player_body.rotation.x * M_PI / 180.0f);
-        camera.up[2] = 0.0f;
+        camera.position[0] = player_body.position.x + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
+        camera.position[1] = player_body.position.y + camera.offset[0] * sin(camera.angleX * M_PI / 180.0f) + camera.offset[1];
+        camera.position[2] = player_body.position.z + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
     }
 }
-static void display(void)
+static void display()
 {
     const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
     const double a = t * rotSpeed;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
-    /*camera.position[0] = camera.distance * sin(camera.angleY);
-    camera.position[2] = camera.distance * cos(camera.angleY);*/
-    setCamera(2);
+    setCamera(camera_state);
 
     // Reset the modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    //camera.lookat[1] += 10;
     // Apply the camera transformation to the modelview matrix
     gluLookAt(camera.position[0], camera.position[1], camera.position[2],
         camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
@@ -269,10 +329,10 @@ static void display(void)
     // draw the basketball court
     glBegin(GL_QUADS);
     glColor3f(0.0, 0.6, 0.0); // set the color to green
-    glVertex3f(-25.0, 0.0, -50.0);
-    glVertex3f(-25.0, 0.0, 50.0);
-    glVertex3f(25.0, 0.0, 50.0);
-    glVertex3f(25.0, 0.0, -50.0);
+    glVertex3f(-40.0, 0.0, -65.0);
+    glVertex3f(-40.0, 0.0, 65.0);
+    glVertex3f(40.0, 0.0, 65.0);
+    glVertex3f(40.0, 0.0, -65.0);
     glEnd();
     glPopMatrix();
 
@@ -282,7 +342,6 @@ static void display(void)
     glRotatef(player_body.rotation.x, 1.0f, 0.0f, 0.0f);
     glRotatef(player_body.rotation.y, 0.0f, 1.0f, 0.0f);
     glRotatef(player_body.rotation.z, 1.0f, 0.0f, 1.0f);
-    //glRotated(a, 0, 1, 0);
     drawShape(player_body);
     glPopMatrix();
 
@@ -294,11 +353,6 @@ static void display(void)
     glPopMatrix();
 
     glutSwapBuffers();
-
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-        std::cerr << "OpenGL error: " << error << std::endl;
-    }
 }
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -306,7 +360,6 @@ void mouse(int button, int state, int x, int y) {
         last_y = y;
     }
 }
-
 void motion(int x, int y) {
     float dx = (float)(x - last_x) / (float)800;
     float dy = (float)(y - last_y) / (float)600;
@@ -359,10 +412,11 @@ static void key(unsigned char key, int x, int y)
         }
         rotSpeedStates = ++rotSpeedStates % 5;
         break;
+    case 'C':
+    case 'c':
+        camera_state = ++camera_state % 3;
+        break;
     }
-    /*cout << "camera look at : " << camera.lookat[0] << "x " << camera.lookat[1] << "y " << camera.lookat[2] << "z" << endl;
-    cout << "camera position at : " << camera.position[0] << "x " << camera.position[1] << "y " << camera.position[2] << "z " << endl;*/
-    
 
     glutPostRedisplay();
 }
@@ -370,79 +424,54 @@ static void keyUp(unsigned char key, int x, int y)
 {
     keys[key] = false; // Set the state of the released key to false
 }
-static void idle(void)
+static void special(int key, int x, int y)
 {
+    switch (key)
+    {
+    case GLUT_KEY_UP:
+        camera.position[1] += 1.0;
+        cout << "camera y " << camera.position[1] << endl;
+        break;
+    case GLUT_KEY_DOWN:
+        camera.position[1] -= 1.0;
+        cout << "camera y " << camera.position[1] << endl;
+        break;
+    case GLUT_KEY_RIGHT:
+        camera.position[0] += 1.0;
+        cout << "camera x " << camera.position[0] << endl;
+        break;
+    case GLUT_KEY_LEFT:
+        camera.position[0] -= 1.0;
+        cout << "camera x " << camera.position[0] << endl;
+        break;
+    }
+}
+static void specialUp(int key, int x, int y)
+{
+    switch (key)
+    {
+        break;
+    }
+}
+static void idle()
+{
+    float forward_x = sin(player_body.rotation.y * M_PI / 180.0f);
+    float forward_z = -cos(player_body.rotation.y * M_PI / 180.0f);
     // Check the state of each key and take appropriate action
     if (keys['w']) {
-        player_body.position.z += 0.05;
+        player_body.position.x += forward_x * player_move_speed;
+        player_body.position.z -= forward_z * player_move_speed;
     }
     if (keys['s']) {
-        player_body.position.z -= 0.05;
+        player_body.position.x -= forward_x * player_move_speed;
+        player_body.position.z += forward_z * player_move_speed;
     }
     if (keys['a']) {
-        player_body.position.x += 0.05;
+        player_body.rotation.y += player_move_speed + 0.65;
     }
     if (keys['d']) {
-        player_body.position.x -= 0.05;
+        player_body.rotation.y -= player_move_speed + 0.65;
     }
-    if (keys['h']) {
-        player_body.rotation.y -= 1.0f;
-    }
-    if (keys['g']) {
-        player_body.rotation.y += 1.0f;
-    }
-    if (keys['k']) {
-        camera.lookat[1] += 1;
-    }
-    if (keys['k']) {
-        camera.lookat[1] -= 1;
-    }
-    
+
     glutPostRedisplay();
-}
-const GLfloat light_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-const GLfloat light_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
-const GLfloat mat_ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
-const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat high_shininess[] = { 100.0f };
-/* Program entry point */
-int main(int argc, char* argv[])
-{
-    glutInit(&argc, argv);
-    glutInitWindowSize(800, 600);
-    glutInitWindowPosition(100, 100);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
-    glutCreateWindow("BasketBall Game");
-    player_body.loadObjFile("Models/low_poly_body.obj");
-    basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
-    //maleBody.loadObjFile("Models/male_body.obj");
-    //loadObjFile("Models/box.obj");
-    //player2.loadObjFile("Models/male_body.obj");
-    //player2.loadObjFile("Models/Orange.obj");
-    glutReshapeFunc(resize);
-    glutDisplayFunc(display);
-    glutMouseFunc(mouse); // set the mouse function
-    glutMotionFunc(motion); // set the motion function
-    glutKeyboardFunc(key);
-    glutKeyboardUpFunc(keyUp);
-    glutIdleFunc(idle);
-    glClearColor(1, 1, 1, 1);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_COLOR_MATERIAL);
-    glEnable(GL_LIGHTING);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
-    glutMainLoop();
-    return 0;
 }
