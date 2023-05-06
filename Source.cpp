@@ -1,4 +1,7 @@
 #define M_PI 3.14159265358979323846
+#define CAMERA_STATE_FIXED_1 0
+#define CAMERA_STATE_FIXED_2 1
+#define CAMERA_STATE_FOLLOW 2
 #include <iostream>
 #include <windows.h>
 #include <cmath>
@@ -34,6 +37,10 @@ public:
     struct Position {
         float x = 0.0, y = 0.0, z = 0.0;
     }position;
+
+    struct Rotation {
+        float x = 0.0, y = 0.0, z = 0.0;
+    }rotation;
 
     vector<Vertex> vertices;
     vector<Normal> normals;
@@ -155,7 +162,8 @@ struct Camera {
     GLfloat position[3] = { 0.0f, 7.5f, 1.0f };
     GLfloat lookat[3] = { 0.0f, 0.0f, 0.0f };
     GLfloat up[3] = { 0.0f, 1.0f, 0.0f };
-    GLfloat distance = 25.0;
+    GLfloat offset[3] = { 0.0f, -80.0f, 12.0 };
+    //GLfloat distance = 15.0;
     GLfloat angleX = 0.0f;
     GLfloat angleY = 100.0f;
 }camera;
@@ -199,6 +207,44 @@ static void drawShape(Model model) {
     firstCall = false;
     glEnd();
 }
+static void setCamera(int camera_state) {
+    if (camera_state == CAMERA_STATE_FIXED_1) {
+        camera.position[0] = 10.0f;
+        camera.position[1] = 10.0f;
+        camera.position[2] = -10.0f;
+        camera.lookat[0] = 0.0f;
+        camera.lookat[1] = 0.0f;
+        camera.lookat[2] = 0.0f;
+    }
+    else if (camera_state == CAMERA_STATE_FIXED_2) {
+        camera.position[0] = -10.0f;
+        camera.position[1] = 10.0f;
+        camera.position[2] = 10.0f;
+        camera.lookat[0] = 0.0f;
+        camera.lookat[1] = 0.0f;
+        camera.lookat[2] = 0.0f;
+    }
+    else if (camera_state == CAMERA_STATE_FOLLOW) {
+        camera.angleY = player_body.rotation.y;
+        // Calculate camera position and target based on player position and orientation
+        camera.lookat[0] = player_body.position.x;
+        camera.lookat[1] = player_body.position.y;
+        camera.lookat[2] = player_body.position.z;
+
+        // Calculate camera position based on player position and orientation
+        float camera_x = player_body.position.x + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
+        float camera_z = player_body.position.z + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
+
+        camera.position[0] = camera_x - camera.offset[2] * sin(camera.angleY * M_PI / 180.0f);
+        camera.position[1] = player_body.position.y + camera.offset[1] * sin(player_body.rotation.x * M_PI / 180.0f);
+        camera.position[2] = camera_z - camera.offset[2] * cos(camera.angleY * M_PI / 180.0f);
+
+        // Set up camera orientation
+        camera.up[0] = 0.0f;
+        camera.up[1] = cos(player_body.rotation.x * M_PI / 180.0f);
+        camera.up[2] = 0.0f;
+    }
+}
 static void display(void)
 {
     const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
@@ -206,16 +252,14 @@ static void display(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
-    camera.position[0] = camera.distance * sin(camera.angleY);
-    camera.position[2] = camera.distance * cos(camera.angleY);
-    if (camera.angleX < 0.0f) {
-        camera.up[1] = -1.0f;
-    }
+    /*camera.position[0] = camera.distance * sin(camera.angleY);
+    camera.position[2] = camera.distance * cos(camera.angleY);*/
+    setCamera(2);
 
     // Reset the modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
+    //camera.lookat[1] += 10;
     // Apply the camera transformation to the modelview matrix
     gluLookAt(camera.position[0], camera.position[1], camera.position[2],
         camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
@@ -235,12 +279,15 @@ static void display(void)
     glPushMatrix();
     glTranslated(player_body.position.x, player_body.position.y + 4.557, player_body.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotated(a, 0, 1, 0);
+    glRotatef(player_body.rotation.x, 1.0f, 0.0f, 0.0f);
+    glRotatef(player_body.rotation.y, 0.0f, 1.0f, 0.0f);
+    glRotatef(player_body.rotation.z, 1.0f, 0.0f, 1.0f);
+    //glRotated(a, 0, 1, 0);
     drawShape(player_body);
     glPopMatrix();
 
     glPushMatrix();
-    glTranslated(player_body.position.x + 10, 0.0, player_body.position.z);
+    glTranslated(basketball_panel.position.x + 10, 0.0, basketball_panel.position.z);
     glColor3f(1.0, 0.0, 0.0);
     glRotated(a, 0, 1, 0);
     drawShape(basketball_panel);
@@ -313,7 +360,9 @@ static void key(unsigned char key, int x, int y)
         rotSpeedStates = ++rotSpeedStates % 5;
         break;
     }
-
+    /*cout << "camera look at : " << camera.lookat[0] << "x " << camera.lookat[1] << "y " << camera.lookat[2] << "z" << endl;
+    cout << "camera position at : " << camera.position[0] << "x " << camera.position[1] << "y " << camera.position[2] << "z " << endl;*/
+    
 
     glutPostRedisplay();
 }
@@ -325,23 +374,30 @@ static void idle(void)
 {
     // Check the state of each key and take appropriate action
     if (keys['w']) {
-        player_body.position.z -= 0.05;
-    }
-    if (keys['s']) {
         player_body.position.z += 0.05;
     }
-    if (keys['a']) {
-        player_body.position.x -= 0.05;
+    if (keys['s']) {
+        player_body.position.z -= 0.05;
     }
-    if (keys['d']) {
+    if (keys['a']) {
         player_body.position.x += 0.05;
     }
-    if (keys['m']) {
-        camera.angleY += 0.01;
+    if (keys['d']) {
+        player_body.position.x -= 0.05;
     }
-    if (keys['n']) {
-        camera.angleY -= 0.01;
+    if (keys['h']) {
+        player_body.rotation.y -= 1.0f;
     }
+    if (keys['g']) {
+        player_body.rotation.y += 1.0f;
+    }
+    if (keys['k']) {
+        camera.lookat[1] += 1;
+    }
+    if (keys['k']) {
+        camera.lookat[1] -= 1;
+    }
+    
     glutPostRedisplay();
 }
 const GLfloat light_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
