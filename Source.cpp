@@ -157,7 +157,7 @@ public:
 
         return count;
     }
-}player_body, player2, basketball_panel, maleBody;
+}player_body, basketball_panel1, basketball_panel2;
 struct Camera {
     GLfloat position[3] = { 0.0f, 5.5f, 1.0f };
     GLfloat lookat[3] = { 0.0f, 0.0f, 0.0f };
@@ -168,7 +168,7 @@ struct Camera {
 }camera;
 int rotSpeed = 20;
 unsigned int camera_state = 0;
-float player_move_speed = 0.05;
+float player_move_speed = 0.15;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 int last_x, last_y;
@@ -203,11 +203,8 @@ int main(int argc, char* argv[])
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("BasketBall Game");
     player_body.loadObjFile("Models/low_poly_body.obj");
-    basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
-    //maleBody.loadObjFile("Models/male_body.obj");
-    //loadObjFile("Models/box.obj");
-    //player2.loadObjFile("Models/male_body.obj");
-    //player2.loadObjFile("Models/Orange.obj");
+    basketball_panel1.loadObjFile("Models/basketBall panel_me.obj");
+    basketball_panel2 = basketball_panel1;
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
 
@@ -215,7 +212,7 @@ int main(int argc, char* argv[])
     glutMotionFunc(motion); // set the motion function
     glutKeyboardFunc(key);
     glutKeyboardUpFunc(keyUp);
-    //glutSpecialFunc(special);
+    glutSpecialFunc(special);
     //glutSpecialUpFunc(specialUp);
     glutIdleFunc(idle);
 
@@ -346,10 +343,22 @@ static void display()
     glPopMatrix();
 
     glPushMatrix();
-    glTranslated(basketball_panel.position.x + 10, 0.0, basketball_panel.position.z);
+    basketball_panel1.position.z = -59.5;
+    glTranslated(basketball_panel1.position.x, 0.0, basketball_panel1.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotated(a, 0, 1, 0);
-    drawShape(basketball_panel);
+    glRotatef(basketball_panel1.rotation.y, 0, 1, 0);
+    glScalef(1.6, 1.6, 1.2);
+    drawShape(basketball_panel1);
+    glPopMatrix();
+
+    glPushMatrix();
+    basketball_panel2.position.z = 59.5;
+    glTranslated(basketball_panel2.position.x, 0.0, basketball_panel2.position.z);
+    glColor3f(1.0, 0.0, 0.0);
+    basketball_panel2.rotation.y = 180;
+    glScalef(1.6, 1.6, 1.2);
+    glRotatef(basketball_panel2.rotation.y, 0, 1, 0);
+    drawShape(basketball_panel2);
     glPopMatrix();
 
     glutSwapBuffers();
@@ -383,12 +392,12 @@ static void key(unsigned char key, int x, int y)
         exit(0);
         break;
     case 'u':
-        player_body.position.y += 0.01;
-        cout << "y : " << player_body.position.y << endl;
+        basketball_panel2.rotation.y += 0.1;
+        cout << "y : " << basketball_panel2.rotation.y << endl;
         break;
     case 'i':
-        player_body.position.y -= 0.01;
-        cout << "y : " << player_body.position.y << endl;
+        basketball_panel2.rotation.y -= 0.1;
+        cout << "y : " << basketball_panel2.rotation.y << endl;
         break;
     case 'p':
         switch (rotSpeedStates)
@@ -429,20 +438,17 @@ static void special(int key, int x, int y)
     switch (key)
     {
     case GLUT_KEY_UP:
-        camera.position[1] += 1.0;
-        cout << "camera y " << camera.position[1] << endl;
+        //basketball_panel1.position.x += 1.0;
+        cout << "x " << ++basketball_panel1.position.x << endl;
         break;
     case GLUT_KEY_DOWN:
-        camera.position[1] -= 1.0;
-        cout << "camera y " << camera.position[1] << endl;
+        cout << "x " << --basketball_panel1.position.x << endl;
         break;
     case GLUT_KEY_RIGHT:
-        camera.position[0] += 1.0;
-        cout << "camera x " << camera.position[0] << endl;
+        cout << "z " << ++basketball_panel1.position.z << endl;
         break;
     case GLUT_KEY_LEFT:
-        camera.position[0] -= 1.0;
-        cout << "camera x " << camera.position[0] << endl;
+        cout << "z " << --basketball_panel1.position.z << endl;
         break;
     }
 }
@@ -467,7 +473,7 @@ static void idle()
         player_body.position.z += forward_z * player_move_speed;
     }
     if (keys['a']) {
-        player_body.rotation.y += player_move_speed + 0.65;
+        player_body.rotation.y += player_move_speed + 0.85;
     }
     if (keys['d']) {
         player_body.rotation.y -= player_move_speed + 0.65;
