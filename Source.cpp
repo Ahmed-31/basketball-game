@@ -2,6 +2,8 @@
 #define CAMERA_STATE_FIXED_1 0
 #define CAMERA_STATE_FIXED_2 1
 #define CAMERA_STATE_FOLLOW 2
+#define CAMERA_STATE_FREE 3
+#define MOUSE_SENSITIVITY 0.5
 #define GRAVITY 10
 #include <iostream>
 #include <windows.h>
@@ -48,21 +50,21 @@ public:
     vector<vector<FaceVertex>> faces;
 
     void parseVertex(const std::string& line, std::vector<Vertex>& vertices) {
-        Vertex vertex;
+        Vertex vertex{};
         std::istringstream iss(line.substr(2));
         iss >> vertex.x >> vertex.y >> vertex.z;
         vertices.push_back(vertex);
     }
 
     void parseNormal(const std::string& line, std::vector<Normal>& normals) {
-        Normal normal;
+        Normal normal{};
         std::istringstream iss(line.substr(3));
         iss >> normal.x >> normal.y >> normal.z;
         normals.push_back(normal);
     }
 
     void parseTextureCoord(const std::string& line, std::vector<TextureCoord>& textureCoords) {
-        TextureCoord textureCoord;
+        TextureCoord textureCoord{};
         std::istringstream iss(line.substr(3));
         iss >> textureCoord.u >> textureCoord.v;
         textureCoords.push_back(textureCoord);
@@ -81,7 +83,7 @@ public:
             int vertexIndex = std::stoi(vertexIndexStr) - 1;
             int textureIndex = textureIndexStr.empty() ? -1 : std::stoi(textureIndexStr) - 1;
             int normalIndex = normalIndexStr.empty() ? -1 : std::stoi(normalIndexStr) - 1;
-            FaceVertex faceVertex;
+            FaceVertex faceVertex{};
             faceVertex.vertexIndex = vertexIndex;
             faceVertex.textureIndex = textureIndex;
             faceVertex.normalIndex = normalIndex;
@@ -303,12 +305,15 @@ static void setCamera(int camera_state) {
         camera.position[0] = player_body.position.x + camera.offset[0] * sin(camera.angleY * M_PI / 180.0f);
         camera.position[1] = player_body.position.y + camera.offset[0] * sin(camera.angleX * M_PI / 180.0f) + camera.offset[1];
         camera.position[2] = player_body.position.z + camera.offset[0] * cos(camera.angleY * M_PI / 180.0f);
-        //// Update the camera position and orientation based on user input
-        //float camera_angle_x_rad = camera.angleX * M_PI / 180.0f;
-        //float camera_angle_y_rad = camera.angleY * M_PI / 180.0f;
-        //camera.position[0] += camera.centerX + camera.offset[0] * sin(camera_angle_x_rad) * sin(camera_angle_y_rad);
-        //camera.position[1] += camera.centerY + camera.offset[0] * cos(camera_angle_x_rad);
-        //camera.position[2] += camera.centerX + camera.offset[0] * sin(camera_angle_x_rad) * cos(camera_angle_y_rad);
+    }
+    else if (camera_state == CAMERA_STATE_FREE) {
+        // Update the camera position and orientation based on user input
+        float camera_angle_x_rad = camera.angleX * M_PI / 180.0f;
+        float camera_angle_y_rad = camera.angleY * M_PI / 180.0f;
+        camera.position[0] = camera.lookat[0] + camera.offset[0] * sin(camera_angle_x_rad) * sin(camera_angle_y_rad);
+        camera.position[1] = camera.lookat[1] + camera.offset[0] * cos(camera_angle_x_rad);
+        camera.position[2] = camera.lookat[0] + camera.offset[0] * sin(camera_angle_x_rad) * cos(camera_angle_y_rad);
+
     }
 }
 static void display()
@@ -388,6 +393,9 @@ void mouse(int button, int state, int x, int y) {
 }
 void motion(int x, int y) {
 
+    camera.angleX = y - last_y * MOUSE_SENSITIVITY;
+    camera.angleY = x - last_x * MOUSE_SENSITIVITY;
+
     last_x = x;
     last_y = y;
 
@@ -412,7 +420,7 @@ static void key(unsigned char key, int x, int y)
         break;
     case 'C':
     case 'c':
-        camera_state = ++camera_state % 3;
+        camera_state = ++camera_state % 4;
         break;
     }
 
