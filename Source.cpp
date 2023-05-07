@@ -5,6 +5,7 @@
 #define CAMERA_STATE_FREE 3
 #define MOUSE_SENSITIVITY 0.3
 #define GRAVITY 10
+#define REFRESH_RATE 16
 #include <iostream>
 #include <windows.h>
 #include <cmath>
@@ -13,9 +14,13 @@
 #include <sstream>
 #include <regex>
 #include <vector>
+#include <GL/GLM/glm.hpp>
+#include <GL/GLM/gtx/euler_angles.hpp>
+#include <GL/GLM/gtx/quaternion.hpp>
 #include <GL/glut.h>
 
 using namespace std;
+using namespace glm;
 
 
 class Model {
@@ -36,13 +41,11 @@ public:
         int vertexIndex, normalIndex, textureIndex;
     };
 
-    struct Position {
-        float x = 1.0, y = 1.0, z = 1.0;
-    }position;
-
-    struct Rotation {
-        float x = 1.0, y = 1.0, z = 1.0;
-    }rotation;
+    struct ModelTransform {
+        vec3 position = vec3(1.0f, 1.0f, 1.0f);
+        vec3 rotation = vec3(1.0f, 1.0f, 1.0f);
+        vec3 scale = vec3(1.0f, 1.0f, 1.0f);
+    }transform;
 
     vector<Vertex> vertices;
     vector<Normal> normals;
@@ -167,6 +170,27 @@ struct Camera {
     GLfloat angleX = 0.0f;
     GLfloat angleY = 0.0f;
 }camera;
+struct Keyframe {
+    float time = 0.0f;
+    vec3 position;
+    vec3 rotation;
+    vec3 scale;
+};
+// Define keyframes for the player's running animation
+std::vector<Keyframe> player_keyframes = {
+    { 0.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 0.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 1.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 1.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 2.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 2.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 3.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 3.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 4.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 4.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 5.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
+    { 5.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) }
+};
 float vertical_velocity = 0.0f;
 float prev_time = 0.0f;
 unsigned int camera_state = 0;
@@ -196,6 +220,8 @@ static void keyUp(unsigned char, int , int);
 static void special(int, int, int);
 static void specialUp(int, int, int);
 static void idle();
+static void timer(int);
+void interpolateKeyframes(float, const Keyframe&, const Keyframe&, vec3&, vec3&, vec3&);
 /* Program entry point */
 int main(int argc, char* argv[])
 {
@@ -217,6 +243,7 @@ int main(int argc, char* argv[])
     glutSpecialFunc(special);
     //glutSpecialUpFunc(specialUp);
     glutIdleFunc(idle);
+    glutTimerFunc(1000, timer, 0);
 
     glClearColor(1, 1, 1, 1);
     glEnable(GL_DEPTH_TEST);
@@ -295,13 +322,13 @@ static void setCamera(int camera_state) {
     }
     else if (camera_state == CAMERA_STATE_FOLLOW) {
         // Calculate camera position and target based on player position and orientation
-        camera.lookat[0] = player_body.position.x;
-        camera.lookat[1] = player_body.position.y + camera.offset[1];
-        camera.lookat[2] = player_body.position.z;
+        camera.lookat[0] = player_body.transform.position.x;
+        camera.lookat[1] = player_body.transform.position.y + camera.offset[1];
+        camera.lookat[2] = player_body.transform.position.z;
 
-        camera.position[0] = player_body.position.x + camera.offset[0] * sin(player_body.rotation.y * M_PI / 180.0f);
-        camera.position[1] = player_body.position.y + camera.offset[0] * sin(player_body.rotation.x * M_PI / 180.0f) + camera.offset[1];
-        camera.position[2] = player_body.position.z + camera.offset[0] * cos(player_body.rotation.y * M_PI / 180.0f);
+        camera.position[0] = player_body.transform.position.x + camera.offset[0] * sin(player_body.transform.rotation.y * M_PI / 180.0f);
+        camera.position[1] = player_body.transform.position.y + camera.offset[0] * sin(player_body.transform.rotation.x * M_PI / 180.0f) + camera.offset[1];
+        camera.position[2] = player_body.transform.position.z + camera.offset[0] * cos(player_body.transform.rotation.y * M_PI / 180.0f);
     }
     else if (camera_state == CAMERA_STATE_FREE) {
         // Update the camera position and orientation based on user input
@@ -322,7 +349,7 @@ static void display()
 
     // Set up camera
     setCamera(camera_state);
-    
+
     // Reset the modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -343,39 +370,51 @@ static void display()
     glEnd();
     glPopMatrix();
 
+    // Update the player's position, rotation, and scale based on the current time
+    for (int i = 0; i < player_keyframes.size() - 1; i++) {
+        if (player_keyframes[i].time <= current_time && player_keyframes[i + 1].time > current_time) {
+            interpolateKeyframes(current_time, player_keyframes[i], player_keyframes[i + 1],
+                player_body.transform.position,
+                player_body.transform.rotation,
+                player_body.transform.scale);
+            break;
+        }
+    }
+    // draw the player body
     glPushMatrix();
     vertical_velocity -= GRAVITY * dt;
-    player_body.position.y += vertical_velocity * dt;
+    player_body.transform.position.y += vertical_velocity * dt;
     // Clamp the object's vertical position to the ground level
-    if (player_body.position.y < 1)
+    if (player_body.transform.position.y < 1)
     {
-        player_body.position.y = 1;
+        player_body.transform.position.y = 1;
         vertical_velocity = 0.0f;
     }
-    glTranslated(player_body.position.x, player_body.position.y + 4.557, player_body.position.z);
+    glTranslated(player_body.transform.position.x, player_body.transform.position.y + 4.557, player_body.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotatef(player_body.rotation.x, 1.0f, 0.0f, 0.0f);
-    glRotatef(player_body.rotation.y, 0.0f, 1.0f, 0.0f);
-    glRotatef(player_body.rotation.z, 1.0f, 0.0f, 1.0f);
+    glRotatef(player_body.transform.rotation.x, 1.0f, 0.0f, 0.0f);
+    glRotatef(player_body.transform.rotation.y, 0.0f, 1.0f, 0.0f);
+    glRotatef(player_body.transform.rotation.z, 1.0f, 0.0f, 1.0f);
+    glScalef(player_body.transform.scale.x, player_body.transform.scale.y, player_body.transform.scale.z);
     drawShape(player_body);
     glPopMatrix();
 
     glPushMatrix();
-    basketball_panel1.position.z = -59.5;
-    glTranslated(basketball_panel1.position.x, 0.0, basketball_panel1.position.z);
+    basketball_panel1.transform.position.z = -59.5;
+    glTranslated(basketball_panel1.transform.position.x, 0.0, basketball_panel1.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotatef(basketball_panel1.rotation.y, 0, 1, 0);
+    glRotatef(basketball_panel1.transform.rotation.y, 0, 1, 0);
     glScalef(1.6, 1.6, 1.2);
     drawShape(basketball_panel1);
     glPopMatrix();
 
     glPushMatrix();
-    basketball_panel2.position.z = 59.5;
-    glTranslated(basketball_panel2.position.x, 0.0, basketball_panel2.position.z);
+    basketball_panel2.transform.position.z = 59.5;
+    glTranslated(basketball_panel2.transform.position.x, 0.0, basketball_panel2.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    basketball_panel2.rotation.y = 180;
+    basketball_panel2.transform.rotation.y = 180;
     glScalef(1.6, 1.6, 1.2);
-    glRotatef(basketball_panel2.rotation.y, 0, 1, 0);
+    glRotatef(basketball_panel2.transform.rotation.y, 0, 1, 0);
     drawShape(basketball_panel2);
     glPopMatrix();
 
@@ -443,22 +482,22 @@ static void specialUp(int key, int x, int y)
 }
 static void idle()
 {
-    float forward_x = sin(player_body.rotation.y * M_PI / 180.0f);
-    float forward_z = -cos(player_body.rotation.y * M_PI / 180.0f);
+    float forward_x = sin(player_body.transform.rotation.y * M_PI / 180.0f);
+    float forward_z = -cos(player_body.transform.rotation.y * M_PI / 180.0f);
     // Check the state of each key and take appropriate action
     if (keys['w']) {
-        player_body.position.x += forward_x * player_move_speed;
-        player_body.position.z -= forward_z * player_move_speed;
+        player_body.transform.position.x += forward_x * player_move_speed;
+        player_body.transform.position.z -= forward_z * player_move_speed;
     }
     if (keys['s']) {
-        player_body.position.x -= forward_x * player_move_speed;
-        player_body.position.z += forward_z * player_move_speed;
+        player_body.transform.position.x -= forward_x * player_move_speed;
+        player_body.transform.position.z += forward_z * player_move_speed;
     }
     if (keys['a']) {
-        player_body.rotation.y += player_move_speed + 0.85;
+        player_body.transform.rotation.y += player_move_speed + 0.85;
     }
     if (keys['d']) {
-        player_body.rotation.y -= player_move_speed + 0.65;
+        player_body.transform.rotation.y -= player_move_speed + 0.65;
     }
     if (keys[' ']) {
         vertical_velocity = 5.0f;
@@ -489,4 +528,25 @@ static void idle()
     }
 
     glutPostRedisplay();
+}
+static void timer(int value) {
+    glutPostRedisplay();
+    glutTimerFunc(REFRESH_RATE, timer, 0);
+}
+void interpolateKeyframes(float t, const Keyframe& kf1, const Keyframe& kf2, vec3& position, vec3& rotation, vec3& scale) {
+    float dt = kf2.time - kf1.time;
+    float t1 = (t - kf1.time) / dt;
+    float t2 = 1.0f - t1;
+
+    // Interpolate position
+    position = t2 * kf1.position + t1 * kf2.position;
+
+    // Interpolate rotation
+    quat q1 = quat(radians(kf1.rotation));
+    quat q2 = quat(radians(kf2.rotation));
+    quat q = slerp(q1, q2, t1);
+    rotation = degrees(eulerAngles(q));
+
+    // Interpolate scale
+    scale = t2 * kf1.scale + t1 * kf2.scale;
 }
