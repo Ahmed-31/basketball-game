@@ -57,6 +57,7 @@ const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
+void init();
 static void resize(int, int);
 static void setCamera(int);
 static void display();
@@ -92,20 +93,9 @@ int main(int argc, char* argv[])
     glutIdleFunc(idle);
     glutTimerFunc(1000, timer, 0);
 
-    glClearColor(1, 1, 1, 1);
-    glEnable(GL_DEPTH_TEST);
+    init();
     glEnable(GL_TEXTURE_2D);
-    glEnable(GL_LIGHT0);
     glEnable(GL_COLOR_MATERIAL);
-    glEnable(GL_LIGHTING);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
 
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
@@ -113,6 +103,24 @@ int main(int argc, char* argv[])
     }
     glutMainLoop();
     return 0;
+}
+
+void init() {
+    glClearColor(1, 1, 1, 1);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
 }
 
 /* GLUT callback Handlers */
