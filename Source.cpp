@@ -58,17 +58,17 @@ const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
 void init();
-static void resize(int, int);
-static void setCamera(int);
-static void display();
+void resize(int, int);
+void setCamera(int);
+void display();
 void mouse(int, int, int, int);
 void motion(int, int);
-static void key(unsigned char, int, int);
-static void keyUp(unsigned char, int , int);
-static void special(int, int, int);
-static void specialUp(int, int, int);
-static void idle();
-static void timer(int);
+void key(unsigned char, int, int);
+void keyUp(unsigned char, int , int);
+void special(int, int, int);
+void specialUp(int, int, int);
+void idle();
+void timer(int);
 void interpolateKeyframes(float, const Keyframe&, const Keyframe&, vec3&, vec3&, vec3&);
 /* Program entry point */
 int main(int argc, char* argv[])
@@ -124,7 +124,7 @@ void init() {
 }
 
 /* GLUT callback Handlers */
-static void resize(int width, int height)
+void resize(int width, int height)
 {
     const float ar = (float)width / (float)height;
     glViewport(0, 0, width, height);
@@ -134,7 +134,7 @@ static void resize(int width, int height)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
-static void setCamera(int camera_state) {
+void setCamera(int camera_state) {
     if (camera_state == CAMERA_STATE_FIXED_1) {
         camera.position[0] = 0.0f;
         camera.position[1] = 30.0f;
@@ -171,7 +171,7 @@ static void setCamera(int camera_state) {
 
     }
 }
-static void display()
+void display()
 {
     const double current_time = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
     // Calculate the time delta since the last frame
@@ -271,7 +271,7 @@ void motion(int x, int y) {
 
     glutPostRedisplay();
 }
-static void key(unsigned char key, int x, int y)
+void key(unsigned char key, int x, int y)
 {
     keys[key] = true; // Set the state of the pressed key to true
     switch (key)
@@ -293,25 +293,25 @@ static void key(unsigned char key, int x, int y)
 
     glutPostRedisplay();
 }
-static void keyUp(unsigned char key, int x, int y)
+void keyUp(unsigned char key, int x, int y)
 {
     keys[key] = false; // Set the state of the released key to false
 }
-static void special(int key, int x, int y)
+void special(int key, int x, int y)
 {
     switch (key)
     {
         break;
     }
 }
-static void specialUp(int key, int x, int y)
+void specialUp(int key, int x, int y)
 {
     switch (key)
     {
         break;
     }
 }
-static void idle()
+void idle()
 {
     float forward_x = sin(player_body.transform.rotation.y * M_PI / 180.0f);
     float forward_z = -cos(player_body.transform.rotation.y * M_PI / 180.0f);
@@ -360,7 +360,7 @@ static void idle()
 
     glutPostRedisplay();
 }
-static void timer(int value) {
+void timer(int value) {
     glutPostRedisplay();
     glutTimerFunc(REFRESH_RATE, timer, 0);
 }
