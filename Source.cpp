@@ -12,7 +12,6 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <regex>
 #include <vector>
 #include <GL/GLM/glm.hpp>
 #include <GL/GLM/gtx/euler_angles.hpp>
@@ -24,118 +23,57 @@ using namespace glm;
 
 
 class Model {
-public:
-    struct Vertex {
-        float x, y, z;
-    };
-
-    struct Normal {
-        float x, y, z;
-    };
-
-    struct TextureCoord {
-        float u, v;
-    };
-
+private:
     struct FaceVertex {
         int vertexIndex, normalIndex, textureIndex;
     };
+    struct Face {
+        vector<FaceVertex> _3vertices ;
+        Face() : _3vertices(3) {};
+    };
 
-    struct ModelTransform {
-        vec3 position = vec3(1.0f, 1.0f, 1.0f);
-        vec3 rotation = vec3(1.0f, 1.0f, 1.0f);
-        vec3 scale = vec3(1.0f, 1.0f, 1.0f);
-    }transform;
+    vector<vec3> vPositions;
+    vector<vec3> normals;
+    vector<vec2> textures;
+    vector<Face> faces;
 
-    vector<Vertex> vertices;
-    vector<Normal> normals;
-    vector<TextureCoord> textureCoords;
-    vector<vector<FaceVertex>> faces;
-
-    void parseVertex(const std::string& line, std::vector<Vertex>& vertices) {
-        Vertex vertex{};
-        std::istringstream iss(line.substr(2));
+    void parseVertex(const string& line) {
+        vec3 vertex{};
+        istringstream iss(line.substr(2));
         iss >> vertex.x >> vertex.y >> vertex.z;
-        vertices.push_back(vertex);
+        vPositions.push_back(vertex);
     }
-
-    void parseNormal(const std::string& line, std::vector<Normal>& normals) {
-        Normal normal{};
-        std::istringstream iss(line.substr(3));
-        iss >> normal.x >> normal.y >> normal.z;
-        normals.push_back(normal);
+    void parseNormal(const string& line) {
+        vec3 vertex{};
+        istringstream iss(line.substr(2));
+        iss >> vertex.x >> vertex.y >> vertex.z;
+        normals.push_back(vertex);
     }
-
-    void parseTextureCoord(const std::string& line, std::vector<TextureCoord>& textureCoords) {
-        TextureCoord textureCoord{};
-        std::istringstream iss(line.substr(3));
-        iss >> textureCoord.u >> textureCoord.v;
-        textureCoords.push_back(textureCoord);
+    void parseTextureCoord(const string& line) {
+        vec2 vertex{};
+        istringstream iss(line.substr(3));
+        iss >> vertex.x >> vertex.y;
+        textures.push_back(vertex);
     }
-
-    void parseFace(const std::string& line, std::vector<FaceVertex>& faceVertices) {
-        faceVertices.clear();
-        std::istringstream iss(line.substr(2));
-        std::string token;
-        while (std::getline(iss, token, ' ')) {
-            std::istringstream viss(token);
-            std::string vertexIndexStr, textureIndexStr, normalIndexStr;
-            std::getline(viss, vertexIndexStr, '/');
-            std::getline(viss, textureIndexStr, '/');
-            std::getline(viss, normalIndexStr, '/');
-            int vertexIndex = std::stoi(vertexIndexStr) - 1;
-            int textureIndex = textureIndexStr.empty() ? -1 : std::stoi(textureIndexStr) - 1;
-            int normalIndex = normalIndexStr.empty() ? -1 : std::stoi(normalIndexStr) - 1;
-            FaceVertex faceVertex{};
-            faceVertex.vertexIndex = vertexIndex;
-            faceVertex.textureIndex = textureIndex;
-            faceVertex.normalIndex = normalIndex;
-            faceVertices.push_back(faceVertex);
+    void parseFace(const string& line) {
+        Face faceVertices{};
+        istringstream iss(line.substr(2));
+        string token;
+        int i = 0;
+        while (getline(iss, token, ' ')) {
+            istringstream viss(token);
+            string vertexIndexStr, textureIndexStr, normalIndexStr;
+            getline(viss, vertexIndexStr, '/');
+            getline(viss, textureIndexStr, '/');
+            getline(viss, normalIndexStr, '/');
+            int vertexIndex = stoi(vertexIndexStr) - 1;
+            int textureIndex = textureIndexStr.empty() ? -1 : stoi(textureIndexStr) - 1;
+            int normalIndex = normalIndexStr.empty() ? -1 : stoi(normalIndexStr) - 1;
+            faceVertices._3vertices[i].vertexIndex = vertexIndex;
+            faceVertices._3vertices[i].textureIndex = textureIndex;
+            faceVertices._3vertices[i++].normalIndex = normalIndex;
         }
-    }
-
-    void loadObjFile(string filename) {
-        ifstream file(filename.c_str());
-        if (!file) {
-            cerr << "Error: could not open file " << filename << endl;
-            exit(1);
-        }
-        int numberOfLines = countLines(filename), currLine = 1;
-
-        cout << "number of lines of " << filename << " is : " << numberOfLines << endl;
-        string line;
-        while (getline(file, line)) {
-            if (currLine++ % (numberOfLines / 100) == 0) {
-                cout << "progress loading obj " << (currLine * 100 / numberOfLines) << "%" << "\r";
-            }
-
-            if (line.substr(0, 2) == "v ") {
-                parseVertex(line, vertices);
-            }
-            else if (line.substr(0, 2) == "vn") {
-                parseNormal(line, normals);
-            }
-            else if (line.substr(0, 2) == "vt") {
-                parseTextureCoord(line, textureCoords);
-            }
-            else if (line.substr(0, 2) == "f ") {
-                std::vector<FaceVertex> faceVertices;
-                parseFace(line, faceVertices);
-                faces.push_back(faceVertices);
-            }
-        }
-        cout << "progress loading obj 100%" << endl;
-    }
-    void showData() {
-        for (const auto& vertex : vertices) {
-            cout << "v " << vertex.x << ' ' << vertex.y << ' ' << vertex.z << endl;
-        }
-        for (const auto& face : faces) {
-            for (const auto& faceVertex : face) {
-                cout << "f " << faceVertex.vertexIndex << '/' << faceVertex.textureIndex << '/' << faceVertex.normalIndex << ' ';
-            }
-            cout << endl;
-        }
+        faces.push_back(faceVertices);
     }
     int countLines(const std::string& filename) {
         std::ifstream file(filename);
@@ -161,7 +99,82 @@ public:
 
         return count;
     }
+    void showData() {
+        for (const auto& vertex : vPositions) {
+            cout << "v " << vertex.x << ' ' << vertex.y << ' ' << vertex.z << endl;
+        }
+        for (const auto& face : faces) {
+            for (const auto& faceVertex : face._3vertices) {
+                cout << "f " << faceVertex.vertexIndex << '/' << faceVertex.textureIndex << '/' << faceVertex.normalIndex << ' ';
+            }
+            cout << endl;
+        }
+    }
+public:
+    struct ModelTransform {
+        vec3 position = vec3(1.0f, 1.0f, 1.0f);
+        vec3 rotation = vec3(1.0f, 1.0f, 1.0f);
+        vec3 scale = vec3(1.0f, 1.0f, 1.0f);
+    }transform;
+    void loadObjFile(string filename) {
+        ifstream file(filename.c_str());
+        if (!file) {
+            cerr << "Error: could not open file " << filename << endl;
+            exit(1);
+        }
+        int numberOfLines = countLines(filename), currLine = 1;
+
+        cout << "number of lines of " << filename << " is : " << numberOfLines << endl;
+        string line;
+        while (getline(file, line)) {
+            if (currLine++ % (numberOfLines / 100) == 0) {
+                cout << "progress loading obj " << (currLine * 100 / numberOfLines) << "%" << "\r";
+            }
+
+            if (line.substr(0, 2) == "v ") {
+                parseVertex(line);
+            }
+            else if (line.substr(0, 2) == "vn") {
+                parseNormal(line);
+            }
+            else if (line.substr(0, 2) == "vt") {
+                parseTextureCoord(line);
+            }
+            else if (line.substr(0, 2) == "f ") {
+                parseFace(line);
+            }
+        }
+        cout << "progress loading obj 100%" << endl;
+    }
+    void drawShape() {
+        if (faces.empty()) {
+            cout << "error: no faces found to draw." << endl;
+            return;
+        }
+        glBegin(GL_TRIANGLES);
+        static bool firstCall = true;
+        int i = 1;
+        for (const auto& face : faces) {
+            for (const auto& faceVertex : face._3vertices) {
+                if (faceVertex.normalIndex != -1 && (unsigned)faceVertex.normalIndex < normals.size()) {
+                    glNormal3f(normals[faceVertex.normalIndex].x, normals[faceVertex.normalIndex].y, normals[faceVertex.normalIndex].z);
+                }
+                if (faceVertex.textureIndex != -1 && (unsigned)faceVertex.textureIndex < textures.size()) {
+                    glTexCoord2f(textures[faceVertex.textureIndex].x, textures[faceVertex.textureIndex].y);
+                }
+                if ((unsigned)faceVertex.vertexIndex < vPositions.size()) {
+                    glVertex3f(vPositions[faceVertex.vertexIndex].x, vPositions[faceVertex.vertexIndex].y, vPositions[faceVertex.vertexIndex].z);
+                }
+            }
+            if (firstCall) {
+                cout << "progress drawing " << (i++ * 100 / faces.size()) << "%" << "\r";
+            }
+        }
+        firstCall = false;
+        glEnd();
+    }
 }player_body, basketball_panel1, basketball_panel2;
+
 struct Camera {
     GLfloat position[3] = { 0.0f, 5.5f, 1.0f };
     GLfloat lookat[3] = { 0.0f, 0.0f, 0.0f };
@@ -210,7 +223,6 @@ const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
 static void resize(int, int);
-static void drawShape(Model);
 static void setCamera(int);
 static void display();
 void mouse(int, int, int, int);
@@ -278,30 +290,6 @@ static void resize(int width, int height)
     gluPerspective(60, ar, 2.0f, 1000.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-}
-static void drawShape(Model model) {
-    glBegin(GL_TRIANGLES);
-    static bool firstCall = true;
-    int i = 1;
-    for (const auto& faceVertices : model.faces) {
-        for (const auto& faceVertex : faceVertices) {
-            if (faceVertex.normalIndex != -1 && (unsigned)faceVertex.normalIndex < model.normals.size()) {
-                glNormal3f(model.normals[faceVertex.normalIndex].x, model.normals[faceVertex.normalIndex].y, model.normals[faceVertex.normalIndex].z);
-            }
-            if (faceVertex.textureIndex != -1 && (unsigned)faceVertex.textureIndex < model.textureCoords.size()) {
-                glTexCoord2f(model.textureCoords[faceVertex.textureIndex].u, model.textureCoords[faceVertex.textureIndex].v);
-            }
-            if ((unsigned)faceVertex.vertexIndex < model.vertices.size()) {
-                glVertex3f(model.vertices[faceVertex.vertexIndex].x, model.vertices[faceVertex.vertexIndex].y, model.vertices[faceVertex.vertexIndex].z);
-            }
-        }
-        if (firstCall) {
-            cout << "progress drawing " << (i++ * 100 / model.faces.size()) << "%" << "\r";
-        }
-    }
-
-    firstCall = false;
-    glEnd();
 }
 static void setCamera(int camera_state) {
     if (camera_state == CAMERA_STATE_FIXED_1) {
@@ -396,7 +384,7 @@ static void display()
     glRotatef(player_body.transform.rotation.y, 0.0f, 1.0f, 0.0f);
     glRotatef(player_body.transform.rotation.z, 1.0f, 0.0f, 1.0f);
     glScalef(player_body.transform.scale.x, player_body.transform.scale.y, player_body.transform.scale.z);
-    drawShape(player_body);
+    player_body.drawShape();
     glPopMatrix();
 
     glPushMatrix();
@@ -405,7 +393,7 @@ static void display()
     glColor3f(1.0, 0.0, 0.0);
     glRotatef(basketball_panel1.transform.rotation.y, 0, 1, 0);
     glScalef(1.6, 1.6, 1.2);
-    drawShape(basketball_panel1);
+    basketball_panel1.drawShape();
     glPopMatrix();
 
     glPushMatrix();
@@ -415,7 +403,7 @@ static void display()
     basketball_panel2.transform.rotation.y = 180;
     glScalef(1.6, 1.6, 1.2);
     glRotatef(basketball_panel2.transform.rotation.y, 0, 1, 0);
-    drawShape(basketball_panel2);
+    basketball_panel2.drawShape();
     glPopMatrix();
 
     glutSwapBuffers();
