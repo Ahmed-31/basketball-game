@@ -8,7 +8,7 @@
 #define REFRESH_RATE 16
 #include "model.h";
 
-Model player_body, basketball_panel1, basketball_panel2;
+Model player_body, basketball_panel;
 
 struct Camera {
     GLfloat position[3] = { 0.0f, 5.5f, 1.0f };
@@ -25,7 +25,7 @@ struct Keyframe {
     vec3 scale;
 };
 // Define keyframes for the player's running animation
-std::vector<Keyframe> player_keyframes = {
+vector<Keyframe> player_keyframes = {
     { 0.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
     { 0.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
     { 1.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
@@ -57,6 +57,8 @@ const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
+GLuint basketball_panel_list, basketball_court_list;
+
 void init();
 void resize(int, int);
 void setCamera(int);
@@ -79,8 +81,7 @@ int main(int argc, char* argv[])
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("BasketBall Game");
     player_body.loadObjFile("Models/low_poly_body.obj");
-    basketball_panel1.loadObjFile("Models/basketBall panel_me.obj");
-    basketball_panel2 = basketball_panel1;
+    basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
 
@@ -117,10 +118,36 @@ void init() {
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
     glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
+    basketball_court_list = glGenLists(1);
+    glNewList(basketball_court_list, GL_COMPILE);
+    // draw the basketball court
     glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glPushMatrix();
+    glTranslatef(0.0, 0.0, 0.0);
+    glBegin(GL_QUADS);
+    glVertex3f(-40.0, 0.0, -65.0);
+    glVertex3f(-40.0, 0.0, 65.0);
+    glVertex3f(40.0, 0.0, 65.0);
+    glVertex3f(40.0, 0.0, -65.0);
+    glEnd();
+    glPopMatrix();
+    glEndList();
+
+    basketball_panel_list = glGenLists(1);
+    glNewList(basketball_panel_list, GL_COMPILE);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glPushMatrix();
+    glRotatef(basketball_panel.transform.rotation.y, 0, 1, 0);
+    glScalef(1.6, 1.6, 1.2);
+    basketball_panel.drawShape();
+    glPopMatrix();
+    glEndList();
 }
 
 /* GLUT callback Handlers */
@@ -189,18 +216,10 @@ void display()
     gluLookAt(camera.position[0], camera.position[1], camera.position[2],
         camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
 
-    // draw the basketball court
     glPushMatrix();
-    glTranslatef(0.0, 0.0, 0.0);
-    glBegin(GL_QUADS);
     glColor3f(0.0, 0.6, 0.0); // set the color to green
-    glVertex3f(-40.0, 0.0, -65.0);
-    glVertex3f(-40.0, 0.0, 65.0);
-    glVertex3f(40.0, 0.0, 65.0);
-    glVertex3f(40.0, 0.0, -65.0);
-    glEnd();
+    glCallList(basketball_court_list);
     glPopMatrix();
-
     // Update the player's position, rotation, and scale based on the current time
     for (int i = 0; i < player_keyframes.size() - 1; i++) {
         if (player_keyframes[i].time <= current_time && player_keyframes[i + 1].time > current_time) {
@@ -231,22 +250,19 @@ void display()
     glPopMatrix();
 
     glPushMatrix();
-    basketball_panel1.transform.position.z = -59.5;
-    glTranslated(basketball_panel1.transform.position.x, 0.0, basketball_panel1.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotatef(basketball_panel1.transform.rotation.y, 0, 1, 0);
-    glScalef(1.6, 1.6, 1.2);
-    basketball_panel1.drawShape();
+    basketball_panel.transform.position.z = -59.5;
+    glTranslated(basketball_panel.transform.position.x, 0.0, basketball_panel.transform.position.z);
+    glCallList(basketball_panel_list);
     glPopMatrix();
 
     glPushMatrix();
-    basketball_panel2.transform.position.z = 59.5;
-    glTranslated(basketball_panel2.transform.position.x, 0.0, basketball_panel2.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    basketball_panel2.transform.rotation.y = 180;
-    glScalef(1.6, 1.6, 1.2);
-    glRotatef(basketball_panel2.transform.rotation.y, 0, 1, 0);
-    basketball_panel2.drawShape();
+    basketball_panel.transform.position.z = 59.5;
+    basketball_panel.transform.rotation.y = 180;
+    glTranslated(basketball_panel.transform.position.x, 0.0, basketball_panel.transform.position.z);
+    glRotatef(basketball_panel.transform.rotation.y, 0, 1, 0);
+    glCallList(basketball_panel_list);
     glPopMatrix();
 
     glutSwapBuffers();
