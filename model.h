@@ -104,8 +104,8 @@ private:
     }
 public:
     struct ModelTransform {
-        vec3 position = vec3(1.0f, 1.0f, 1.0f);
-        vec3 rotation = vec3(1.0f, 1.0f, 1.0f);
+        vec3 position = vec3(0.0f, 0.0f, 0.0f);
+        vec3 rotation = vec3(0.0f, 0.0f, 0.0f);
         vec3 scale = vec3(1.0f, 1.0f, 1.0f);
     }transform;
     void loadObjFile(string filename) {

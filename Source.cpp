@@ -7,8 +7,10 @@
 #define GRAVITY 10
 #define REFRESH_RATE 16
 #include "model.h";
+#include "ModelGroup.h"
 
-Model player_body, basketball_panel;
+Model basketball_panel;
+ModelGroup player_body;
 
 struct Camera {
     GLfloat position[3] = { 0.0f, 5.5f, 1.0f };
@@ -75,12 +77,19 @@ void interpolateKeyframes(float, const Keyframe&, const Keyframe&, vec3&, vec3&,
 /* Program entry point */
 int main(int argc, char* argv[])
 {
+    vector<string> filenames{
+        "Models/core_body.obj",
+        "Models/left_hand.obj",
+        "Models/right_hand.obj",
+        "Models/left_leg.obj",
+        "Models/right_leg.obj"
+    };
     glutInit(&argc, argv);
     glutInitWindowSize(800, 600);
     glutInitWindowPosition(100, 100);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("BasketBall Game");
-    player_body.loadObjFile("Models/low_poly_body.obj");
+    player_body.loadChildModel(filenames);
     basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
@@ -240,12 +249,7 @@ void display()
         player_body.transform.position.y = 1;
         vertical_velocity = 0.0f;
     }
-    glTranslated(player_body.transform.position.x, player_body.transform.position.y + 4.557, player_body.transform.position.z);
     glColor3f(1.0, 0.0, 0.0);
-    glRotatef(player_body.transform.rotation.x, 1.0f, 0.0f, 0.0f);
-    glRotatef(player_body.transform.rotation.y, 0.0f, 1.0f, 0.0f);
-    glRotatef(player_body.transform.rotation.z, 1.0f, 0.0f, 1.0f);
-    glScalef(player_body.transform.scale.x, player_body.transform.scale.y, player_body.transform.scale.z);
     player_body.drawShape();
     glPopMatrix();
 
