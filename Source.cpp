@@ -42,7 +42,7 @@ vector<Keyframe> player_keyframes = {
 float vertical_velocity = 0.0f;
 float prev_time = 0.0f;
 unsigned int camera_state = 0;
-float player_move_speed = 0.15;
+float player_move_speed = 0.05;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 int last_x, last_y;
@@ -341,10 +341,10 @@ void idle()
         player_body.transform.position.z += forward_z * player_move_speed;
     }
     if (keys['a']) {
-        player_body.transform.rotation.y += player_move_speed + 0.85;
+        player_body.transform.rotation.y += player_move_speed + 0.15;
     }
     if (keys['d']) {
-        player_body.transform.rotation.y -= player_move_speed + 0.65;
+        player_body.transform.rotation.y -= player_move_speed + 0.15;
     }
     if (keys[' ']) {
         vertical_velocity = 5.0f;
