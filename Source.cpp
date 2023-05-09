@@ -329,6 +329,7 @@ void specialUp(int key, int x, int y)
 }
 void idle()
 {
+    float camera_free_speed = 0.1;
     float forward_x = sin(player_body.transform.rotation.y * M_PI / 180.0f);
     float forward_z = -cos(player_body.transform.rotation.y * M_PI / 180.0f);
     // Check the state of each key and take appropriate action
@@ -350,28 +351,28 @@ void idle()
         vertical_velocity = 5.0f;
     }
     if (keys['i']) {
-        camera.position[1] += 0.5;
-        camera.lookat[1] += 0.5;
+        camera.position[1] += camera_free_speed;
+        camera.lookat[1] += camera_free_speed;
     }
     if (keys['k']) {
-        camera.position[1] -= 0.5;
-        camera.lookat[1] -= 0.5;
+        camera.position[1] -= camera_free_speed;
+        camera.lookat[1] -= camera_free_speed;
     }
     if (keys['l']) {
-        camera.position[0] += 0.5;
-        camera.lookat[0] += 0.5;
+        camera.position[0] += camera_free_speed;
+        camera.lookat[0] += camera_free_speed;
     }
     if (keys['j']) {
-        camera.position[0] -= 0.5;
-        camera.lookat[0] -= 0.5;
+        camera.position[0] -= camera_free_speed;
+        camera.lookat[0] -= camera_free_speed;
     }
     if (keys['o']) {
-        camera.position[2] += 0.5;
-        camera.lookat[2] += 0.5;
+        camera.position[2] += camera_free_speed;
+        camera.lookat[2] += camera_free_speed;
     }
     if (keys['u']) {
-        camera.position[2] -= 0.5;
-        camera.lookat[2] -= 0.5;
+        camera.position[2] -= camera_free_speed;
+        camera.lookat[2] -= camera_free_speed;
     }
 
     glutPostRedisplay();
