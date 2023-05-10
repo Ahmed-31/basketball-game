@@ -26,27 +26,28 @@ struct Keyframe {
     vec3 rotation;
     vec3 scale;
 };
-// Define keyframes for the player's running animation
-vector<Keyframe> player_keyframes = {
-    { 0.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 0.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 1.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 1.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 2.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 2.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 3.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 3.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 4.0f, vec3(-8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 4.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 5.0f, vec3(8.0f, 2.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) },
-    { 5.5f, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -45.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f) }
+struct Animate {
+    bool jump = false;
+}animate;
+// Define keyframes for the player's jumping animation
+vector<Keyframe> jump_keyframes = {
+    {0.1f * 0.15f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.94f, 1.0f}}, // Starting position
+    {0.5f * 0.15f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.84f, 1.0f}},
+    {1.0f * 0.15f, {0.0f, 2.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {1.5f * 0.15f, {0.0f, 3.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {2.0f * 0.15f, {0.0f, 4.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {2.5f * 0.15f, {0.0f, 5.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {3.0f * 0.15f, {0.0f, 4.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {3.5f * 0.15f, {0.0f, 3.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {4.0f * 0.15f, {0.0f, 2.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {4.5f * 0.15f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.95f, 1.0f}},
+    {5.0f * 0.15f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
 };
-float vertical_velocity = 0.0f;
-float prev_time = 0.0f;
 unsigned int camera_state = 0;
 float player_move_speed = 0.05;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
+float jump_start_time = 0.0f;
 int last_x, last_y;
 
 
@@ -229,26 +230,9 @@ void display()
     glColor3f(0.0, 0.6, 0.0); // set the color to green
     glCallList(basketball_court_list);
     glPopMatrix();
-    // Update the player's position, rotation, and scale based on the current time
-    for (int i = 0; i < player_keyframes.size() - 1; i++) {
-        if (player_keyframes[i].time <= current_time && player_keyframes[i + 1].time > current_time) {
-            interpolateKeyframes(current_time, player_keyframes[i], player_keyframes[i + 1],
-                player_body.transform.position,
-                player_body.transform.rotation,
-                player_body.transform.scale);
-            break;
-        }
-    }
+
     // draw the player body
     glPushMatrix();
-    vertical_velocity -= GRAVITY * dt;
-    player_body.transform.position.y += vertical_velocity * dt;
-    // Clamp the object's vertical position to the ground level
-    if (player_body.transform.position.y < 1)
-    {
-        player_body.transform.position.y = 1;
-        vertical_velocity = 0.0f;
-    }
     glColor3f(1.0, 0.0, 0.0);
     player_body.drawShape();
     glPopMatrix();
@@ -270,7 +254,6 @@ void display()
     glPopMatrix();
 
     glutSwapBuffers();
-    prev_time = current_time;
 }
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -299,6 +282,13 @@ void key(unsigned char key, int x, int y)
     case 27:
     case 'q':
         exit(0);
+        break;
+    case ' ':
+        if (!animate.jump) {
+            // Start jump animation
+            animate.jump = true;
+            jump_start_time = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+        }
         break;
     case 'C':
     case 'c':
@@ -351,9 +341,6 @@ void idle()
     if (keys['d']) {
         player_body.transform.rotation.y -= player_move_speed + 0.15;
     }
-    if (keys[' ']) {
-        vertical_velocity = 5.0f;
-    }
     if (keys['i']) {
         camera.position[1] += camera_free_speed;
         camera.lookat[1] += camera_free_speed;
@@ -378,11 +365,36 @@ void idle()
         camera.position[2] -= camera_free_speed;
         camera.lookat[2] -= camera_free_speed;
     }
-
     glutPostRedisplay();
 }
 void timer(int value) {
     glutPostRedisplay();
+
+    // Update player position based on animation
+    if (animate.jump) {
+        float time_since_jump_start = glutGet(GLUT_ELAPSED_TIME) / 1000.0f - jump_start_time;
+        if (time_since_jump_start >= jump_keyframes[jump_keyframes.size() - 1].time) {
+            // Animation is finished
+            animate.jump = false;
+            player_body.transform.position.y = 0.0f;
+        }
+        else {
+            // Find current keyframe
+            int i = 0;
+            while (i < jump_keyframes.size() - 1 && time_since_jump_start >= jump_keyframes[i + 1].time) {
+                i++;
+            }
+            // Interpolate between keyframes
+            float t = (time_since_jump_start - jump_keyframes[i].time) / (jump_keyframes[i + 1].time - jump_keyframes[i].time);
+            player_body.transform.position.y = jump_keyframes[i].position.y * (1 - t) + jump_keyframes[i + 1].position.y * t;
+            player_body.transform.scale.y = jump_keyframes[i].scale.y * (1 - t) + jump_keyframes[i + 1].scale.y * t;
+        }
+    }
+    // Clamp the object's vertical position to the ground level
+    if (player_body.transform.position.y < 0.0f)
+    {
+        player_body.transform.position.y = 0.0f;
+    }
     glutTimerFunc(REFRESH_RATE, timer, 0);
 }
 void interpolateKeyframes(float t, const Keyframe& kf1, const Keyframe& kf2, vec3& position, vec3& rotation, vec3& scale) {

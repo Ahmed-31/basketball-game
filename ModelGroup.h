@@ -19,7 +19,14 @@ public:
         glRotatef(transform.rotation.z, 0, 0, 1);
         glScalef(transform.scale.x, transform.scale.y, transform.scale.z);
         for (auto& childModel : childModels) {
+            glPushMatrix();
+            glTranslatef(childModel.transform.position.x, childModel.transform.position.y, childModel.transform.position.z);
+            glRotatef(childModel.transform.rotation.x, 1, 0, 0);
+            glRotatef(childModel.transform.rotation.y, 0, 1, 0);
+            glRotatef(childModel.transform.rotation.z, 0, 0, 1);
+            glScalef(childModel.transform.scale.x, childModel.transform.scale.y, childModel.transform.scale.z);
             childModel.drawShape();
+            glPopMatrix();
         }
     }
 };
