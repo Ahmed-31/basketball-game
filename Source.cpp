@@ -28,6 +28,7 @@ struct Keyframe {
 };
 struct Animate {
     bool jump = false;
+    bool run = false;
 }animate;
 // Define keyframes for the player's jumping animation
 vector<Keyframe> jump_keyframes = {
@@ -43,11 +44,36 @@ vector<Keyframe> jump_keyframes = {
     {4.5f * 0.15f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.95f, 1.0f}},
     {5.0f * 0.15f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
 };
+// Define keyframes for the player's running animation legs
+vector<Keyframe> run_keyframes_legs = {
+    {0.0f, {0.0f, 0.45f, 1.4f}, {-20.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}, // Starting position
+    {0.0f, {0.0f, 0.4f, 1.2f}, {-15.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.3f, 0.8f}, {-10.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.2f, 0.4f}, {-5.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.2f, -0.4f}, {5.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.3f, -0.9f}, {10.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.4f, -1.3f}, {15.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.45f, -1.5f}, {20.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+};
+// Define keyframes for the player's running animation legs
+vector<Keyframe> run_keyframes_hands = {
+    {0.0f, {0.0f, 0.3f, -2.4f}, {20.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}, // Starting position
+    {0.0f, {0.0f, 0.2f, -1.8f}, {15.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.1f, -1.2f}, {10.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.0f, -0.6f}, {5.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.0f, 0.6f}, {-5.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.2f, 1.2f}, {-10.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.3f, 1.8f}, {-15.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {0.0f, {0.0f, 0.4f, 2.2f}, {-18.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+};
 unsigned int camera_state = 0;
 float player_move_speed = 0.05;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 float jump_start_time = 0.0f;
+float run_start_time = 0.0f;
 int frame_count = 0;
 int current_time = 0;
 int previous_time = 0;
@@ -122,6 +148,15 @@ int main(int argc, char* argv[])
 }
 
 void init() {
+    // initialize the time of keyframes.
+    for (int i = 0; i < jump_keyframes.size(); i++) {
+        jump_keyframes[i].time = 0.1 + i * 0.1f;
+    }
+    for (int i = 0; i < run_keyframes_hands.size(); i++) {
+        run_keyframes_legs[i].time = 0.1 + i * 0.1f;
+        run_keyframes_hands[i].time = 0.1 + i * 0.1f;
+    }
+
     glClearColor(1, 1, 1, 1);
 
     glEnable(GL_DEPTH_TEST);
@@ -296,9 +331,9 @@ void key(unsigned char key, int x, int y)
     case 'C':
     case 'c':
         camera_state = ++camera_state % 4;
-        camera.lookat[0] = 0.0;
-        camera.lookat[1] = 20.0;
-        camera.lookat[2] = 20.0;
+        camera.lookat[0] = -15.0;
+        camera.lookat[1] = 10.0;
+        camera.lookat[2] = 0.0;
         camera.angleX = 100.0;
         camera.angleY = 50.0;
         break;
@@ -326,15 +361,23 @@ void specialUp(int key, int x, int y)
 }
 void idle()
 {
-    float camera_free_speed = 0.1;
+    float camera_free_speed = 0.01;
     float forward_x = sin(player_body.transform.rotation.y * M_PI / 180.0f);
     float forward_z = -cos(player_body.transform.rotation.y * M_PI / 180.0f);
     // Check the state of each key and take appropriate action
     if (keys['w']) {
+        if (!animate.run) {
+            animate.run = true;
+            run_start_time = glutGet(GLUT_ELAPSED_TIME) / 1000;
+        }
         player_body.transform.position.x += forward_x * player_move_speed;
         player_body.transform.position.z -= forward_z * player_move_speed;
     }
     if (keys['s']) {
+        if (!animate.run) {
+            animate.run = true;
+            run_start_time = glutGet(GLUT_ELAPSED_TIME) / 1000;
+        }
         player_body.transform.position.x -= forward_x * player_move_speed;
         player_body.transform.position.z += forward_z * player_move_speed;
     }
@@ -392,30 +435,105 @@ void timer(int value) {
             player_body.transform.position.y = jump_keyframes[i].position.y * (1 - t) + jump_keyframes[i + 1].position.y * t;
             player_body.transform.scale.y = jump_keyframes[i].scale.y * (1 - t) + jump_keyframes[i + 1].scale.y * t;
         }
+        // Clamp the object's vertical position to the ground level
+        if (player_body.transform.position.y < 0.0f)
+        {
+            player_body.transform.position.y = 0.0f;
+        }
     }
-    // Clamp the object's vertical position to the ground level
-    if (player_body.transform.position.y < 0.0f)
-    {
-        player_body.transform.position.y = 0.0f;
+
+    // Update hands based on animation
+    if (animate.run) {
+        for (int i = 0; i < run_keyframes_hands.size(); i++) {
+
+        }
+        float time_since_run_start = glutGet(GLUT_ELAPSED_TIME) / 1000.0f - run_start_time;
+        // left hand
+        if (time_since_run_start >= run_keyframes_hands[run_keyframes_hands.size() - 1].time) {
+            // Animation is finished
+            animate.run = false;
+            player_body.childModels[1].transform.rotation.x = 0.0f;
+            player_body.childModels[1].transform.position.z = 0.0f;
+            player_body.childModels[1].transform.position.y = 0.0f;
+        }
+        else {
+            // Find current keyframe
+            int i = 0;
+            while (i < run_keyframes_hands.size() - 1 && time_since_run_start >= run_keyframes_hands[i + 1].time) {
+                i++;
+            }
+            // Interpolate between keyframes
+            float t = (time_since_run_start - run_keyframes_hands[i].time) / (run_keyframes_hands[i + 1].time - run_keyframes_hands[i].time);
+            player_body.childModels[1].transform.rotation.x = run_keyframes_hands[i].rotation.x * (1 - t) + run_keyframes_hands[i + 1].rotation.x * t;
+            player_body.childModels[1].transform.position.z = run_keyframes_hands[i].position.z * (1 - t) + run_keyframes_hands[i + 1].position.z * t;
+            player_body.childModels[1].transform.position.y = run_keyframes_hands[i].position.y * (1 - t) + run_keyframes_hands[i + 1].position.y * t;
+
+        }
+        // right hand
+        if (time_since_run_start >= run_keyframes_hands[run_keyframes_hands.size() - 1].time) {
+            // Animation is finished
+            animate.run = false;
+            player_body.childModels[2].transform.rotation.x = 0.0f;
+            player_body.childModels[2].transform.position.z = 0.0f;
+            player_body.childModels[2].transform.position.y = 0.0f;
+        }
+        else {
+            // Find current keyframe
+            int i = 0;
+            while (i < run_keyframes_hands.size() - 1 && time_since_run_start >= run_keyframes_hands[i + 1].time) {
+                i++;
+            }
+            // Interpolate between keyframes
+            float t = (time_since_run_start - run_keyframes_hands[i].time) / (run_keyframes_hands[i + 1].time - run_keyframes_hands[i].time);
+            player_body.childModels[2].transform.rotation.x = (-run_keyframes_hands[i].rotation.x) * (1 - t) + (-run_keyframes_hands[i + 1].rotation.x) * t;
+            player_body.childModels[2].transform.position.z = (-run_keyframes_hands[i].position.z) * (1 - t) + (-run_keyframes_hands[i + 1].position.z) * t;
+            player_body.childModels[2].transform.position.y = run_keyframes_hands[i].position.y * (1 - t) + run_keyframes_hands[i + 1].position.y * t;
+        }
+
+        // left leg
+        if (time_since_run_start >= run_keyframes_legs[run_keyframes_legs.size() - 1].time) {
+            // Animation is finished
+            animate.run = false;
+            player_body.childModels[3].transform.rotation.x = 0.0f;
+            player_body.childModels[3].transform.position.z = 0.0f;
+            player_body.childModels[3].transform.position.y = 0.0f;
+        }
+        else {
+            // Find current keyframe
+            int i = 0;
+            while (i < run_keyframes_legs.size() - 1 && time_since_run_start >= run_keyframes_legs[i + 1].time) {
+                i++;
+            }
+            // Interpolate between keyframes
+            float t = (time_since_run_start - run_keyframes_legs[i].time) / (run_keyframes_legs[i + 1].time - run_keyframes_legs[i].time);
+            player_body.childModels[3].transform.rotation.x = run_keyframes_legs[i].rotation.x * (1 - t) + run_keyframes_legs[i + 1].rotation.x * t;
+            player_body.childModels[3].transform.position.z = run_keyframes_legs[i].position.z * (1 - t) + run_keyframes_legs[i + 1].position.z * t;
+            player_body.childModels[3].transform.position.y = run_keyframes_legs[i].position.y * (1 - t) + run_keyframes_legs[i + 1].position.y * t;
+            
+        }
+
+        // right leg
+        if (time_since_run_start >= run_keyframes_legs[run_keyframes_legs.size() - 1].time) {
+            // Animation is finished
+            animate.run = false;
+            player_body.childModels[4].transform.rotation.x = 0.0f;
+            player_body.childModels[4].transform.position.z = 0.0f;
+            player_body.childModels[4].transform.position.y = 0.0f;
+        }
+        else {
+            // Find current keyframe
+            int i = 0;
+            while (i < run_keyframes_legs.size() - 1 && time_since_run_start >= run_keyframes_legs[i + 1].time) {
+                i++;
+            }
+            // Interpolate between keyframes
+            float t = (time_since_run_start - run_keyframes_legs[i].time) / (run_keyframes_legs[i + 1].time - run_keyframes_legs[i].time);
+            player_body.childModels[4].transform.rotation.x = (-run_keyframes_legs[i].rotation.x) * (1 - t) + (-run_keyframes_legs[i + 1].rotation.x) * t;
+            player_body.childModels[4].transform.position.z = (-run_keyframes_legs[i].position.z) * (1 - t) + (-run_keyframes_legs[i + 1].position.z) * t;
+            player_body.childModels[4].transform.position.y = run_keyframes_legs[i].position.y * (1 - t) + run_keyframes_legs[i + 1].position.y * t;
+        }
     }
     glutTimerFunc(REFRESH_RATE, timer, 0);
-}
-void interpolateKeyframes(float t, const Keyframe& kf1, const Keyframe& kf2, vec3& position, vec3& rotation, vec3& scale) {
-    float dt = kf2.time - kf1.time;
-    float t1 = (t - kf1.time) / dt;
-    float t2 = 1.0f - t1;
-
-    // Interpolate position
-    position = t2 * kf1.position + t1 * kf2.position;
-
-    // Interpolate rotation
-    quat q1 = quat(radians(kf1.rotation));
-    quat q2 = quat(radians(kf2.rotation));
-    quat q = slerp(q1, q2, t1);
-    rotation = degrees(eulerAngles(q));
-
-    // Interpolate scale
-    scale = t2 * kf1.scale + t1 * kf2.scale;
 }
 void showFrameRate() {
     // Increment the frame count
@@ -432,6 +550,6 @@ void showFrameRate() {
         frame_rate = frame_count / (elapsed_time / 1000.0f);
         previous_time = current_time;
         frame_count = 0;
-        cout << "frame rate is : " << frame_rate << endl;
+        //cout << "frame rate is : " << frame_rate << endl;
     }
 }
