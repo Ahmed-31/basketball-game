@@ -48,6 +48,10 @@ float player_move_speed = 0.05;
 bool keys[256] = { false }; // Array to store the state of each key
 bool pause = false;
 float jump_start_time = 0.0f;
+int frame_count = 0;
+int current_time = 0;
+int previous_time = 0;
+float frame_rate = 0.0f;
 int last_x, last_y;
 
 
@@ -75,6 +79,7 @@ void specialUp(int, int, int);
 void idle();
 void timer(int);
 void interpolateKeyframes(float, const Keyframe&, const Keyframe&, vec3&, vec3&, vec3&);
+void showFrameRate();
 /* Program entry point */
 int main(int argc, char* argv[])
 {
@@ -210,9 +215,7 @@ void setCamera(int camera_state) {
 }
 void display()
 {
-    const double current_time = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-    // Calculate the time delta since the last frame
-    float dt = current_time - prev_time;
+    showFrameRate();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
@@ -413,4 +416,22 @@ void interpolateKeyframes(float t, const Keyframe& kf1, const Keyframe& kf2, vec
 
     // Interpolate scale
     scale = t2 * kf1.scale + t1 * kf2.scale;
+}
+void showFrameRate() {
+    // Increment the frame count
+    frame_count++;
+
+    // Get the current time in milliseconds
+    current_time = glutGet(GLUT_ELAPSED_TIME);
+
+    // Calculate the time elapsed since the last frame
+    int elapsed_time = current_time - previous_time;
+
+    // Calculate the frame rate
+    if (elapsed_time > 1000) {
+        frame_rate = frame_count / (elapsed_time / 1000.0f);
+        previous_time = current_time;
+        frame_count = 0;
+        cout << "frame rate is : " << frame_rate << endl;
+    }
 }
