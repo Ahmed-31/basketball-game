@@ -90,7 +90,7 @@ const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
-GLuint basketball_panel_list, basketball_court_list;
+GLuint basketball_panel_list, basketball_court_list, long_wall, short_wall;
 
 void init();
 void resize(int, int);
@@ -170,7 +170,6 @@ void init() {
 
     basketball_court_list = glGenLists(1);
     glNewList(basketball_court_list, GL_COMPILE);
-    // draw the basketball court
     glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
@@ -182,6 +181,38 @@ void init() {
     glVertex3f(-40.0, 0.0, 65.0);
     glVertex3f(40.0, 0.0, 65.0);
     glVertex3f(40.0, 0.0, -65.0);
+    glEnd();
+    glPopMatrix();
+    glEndList();
+
+    long_wall = glGenLists(1);
+    glNewList(long_wall, GL_COMPILE);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glPushMatrix();
+    glBegin(GL_QUADS);
+    glVertex3f(0.0, -20.0, -65.0);
+    glVertex3f(0.0, -20.0, 65.0);
+    glVertex3f(0.0, 20.0, 65.0);
+    glVertex3f(0.0, 20.0, -65.0);
+    glEnd();
+    glPopMatrix();
+    glEndList();
+
+    short_wall = glGenLists(1);
+    glNewList(short_wall, GL_COMPILE);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glPushMatrix();
+    glBegin(GL_QUADS);
+    glVertex3f(0.0, -20.0, -40.0);
+    glVertex3f(0.0, -20.0, 40.0);
+    glVertex3f(0.0, 20.0, 40.0);
+    glVertex3f(0.0, 20.0, -40.0);
     glEnd();
     glPopMatrix();
     glEndList();
@@ -213,17 +244,17 @@ void resize(int width, int height)
 }
 void setCamera(int camera_state) {
     if (camera_state == CAMERA_STATE_FIXED_1) {
-        camera.position[0] = 0.0f;
-        camera.position[1] = 30.0f;
-        camera.position[2] = -100.0f;
+        camera.position[0] = 39.0f;
+        camera.position[1] = 20.0f;
+        camera.position[2] = -63.0f;
         camera.lookat[0] = 0.0f;
         camera.lookat[1] = 0.0f;
         camera.lookat[2] = 0.0f;
     }
     else if (camera_state == CAMERA_STATE_FIXED_2) {
-        camera.position[0] = 100.0f;
-        camera.position[1] = 50.0f;
-        camera.position[2] = 0.0f;
+        camera.position[0] = -39.0f;
+        camera.position[1] = 20.0f;
+        camera.position[2] = 63.0f;
         camera.lookat[0] = 0.0f;
         camera.lookat[1] = 0.0f;
         camera.lookat[2] = 0.0f;
@@ -264,9 +295,34 @@ void display()
     gluLookAt(camera.position[0], camera.position[1], camera.position[2],
         camera.lookat[0], camera.lookat[1], camera.lookat[2], camera.up[0], camera.up[1], camera.up[2]);
 
+    // draw the basketball court
     glPushMatrix();
     glColor3f(0.0, 0.6, 0.0); // set the color to green
     glCallList(basketball_court_list);
+    glPopMatrix();
+
+    // draw the basketball coart walls
+    glPushMatrix();
+    glColor3f(0.4, 0.6, 0.0);
+    glTranslatef(40.0f, 20.0f, 0.0f);
+    glCallList(long_wall);
+    glPopMatrix();
+    glPushMatrix();
+    glColor3f(0.4, 0.6, 0.0);
+    glTranslatef(-40.0f, 20.0f, 0.0f);
+    glCallList(long_wall);
+    glPopMatrix();
+    glPushMatrix();
+    glColor3f(0.4, 0.6, 0.0);
+    glTranslatef(0.0f, 20.0f, 65.0f);
+    glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+    glCallList(short_wall);
+    glPopMatrix();
+    glPushMatrix();
+    glColor3f(0.4, 0.6, 0.0);
+    glTranslatef(0.0f, 20.0f, -65.0f);
+    glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+    glCallList(short_wall);
     glPopMatrix();
 
     // draw the player body
@@ -275,13 +331,13 @@ void display()
     player_body.drawShape();
     glPopMatrix();
 
+    // draw basketball panels
     glPushMatrix();
     glColor3f(1.0, 0.0, 0.0);
     basketball_panel.transform.position.z = -59.5;
     glTranslated(basketball_panel.transform.position.x, 0.0, basketball_panel.transform.position.z);
     glCallList(basketball_panel_list);
     glPopMatrix();
-
     glPushMatrix();
     glColor3f(1.0, 0.0, 0.0);
     basketball_panel.transform.position.z = 59.5;
