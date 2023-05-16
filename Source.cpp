@@ -9,7 +9,7 @@
 #include "model.h";
 #include "ModelGroup.h"
 
-Model basketball_panel;
+Model basketball_panel, ball;
 ModelGroup player_body;
 
 struct Camera {
@@ -90,7 +90,7 @@ const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 const GLfloat high_shininess[] = { 100.0f };
 
-GLuint basketball_panel_list, basketball_court_list, long_wall, short_wall;
+GLuint basketball_panel_list, basketball_court_list, long_wall, short_wall, playground_list;
 
 void init();
 void resize(int, int);
@@ -123,6 +123,7 @@ int main(int argc, char* argv[])
     glutCreateWindow("BasketBall Game");
     player_body.loadChildModel(filenames);
     basketball_panel.loadObjFile("Models/basketBall panel_me.obj");
+    ball.loadObjFile("Models/ball.obj");
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
 
@@ -177,6 +178,7 @@ void init() {
     glPushMatrix();
     glTranslatef(0.0, 0.0, 0.0);
     glBegin(GL_QUADS);
+    glNormal3f(0.0f, 1.0f, 0.0f);
     glVertex3f(-40.0, 0.0, -65.0);
     glVertex3f(-40.0, 0.0, 65.0);
     glVertex3f(40.0, 0.0, 65.0);
@@ -281,7 +283,7 @@ void setCamera(int camera_state) {
 }
 void display()
 {
-    showFrameRate();
+    //showFrameRate();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up camera
@@ -346,6 +348,13 @@ void display()
     glRotatef(basketball_panel.transform.rotation.y, 0, 1, 0);
     glCallList(basketball_panel_list);
     glPopMatrix();
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glTranslatef(0.0f, 20.0f, -20.0f);
+    ball.drawShape();
 
     glutSwapBuffers();
 }
@@ -491,11 +500,6 @@ void timer(int value) {
             player_body.transform.position.y = jump_keyframes[i].position.y * (1 - t) + jump_keyframes[i + 1].position.y * t;
             player_body.transform.scale.y = jump_keyframes[i].scale.y * (1 - t) + jump_keyframes[i + 1].scale.y * t;
         }
-        // Clamp the object's vertical position to the ground level
-        if (player_body.transform.position.y < 0.0f)
-        {
-            player_body.transform.position.y = 0.0f;
-        }
     }
 
     // Update hands based on animation
@@ -606,6 +610,6 @@ void showFrameRate() {
         frame_rate = frame_count / (elapsed_time / 1000.0f);
         previous_time = current_time;
         frame_count = 0;
-        //cout << "frame rate is : " << frame_rate << endl;
+        cout << "frame rate is : " << frame_rate << endl;
     }
 }
